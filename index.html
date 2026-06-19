@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>DR400/160 F-HREJ — Prévol</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="F-HREJ-Preflight">
+<meta name="theme-color" content="#0f1d35">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<style>
+:root{
+  --bg:#0f1d35;
+  --bg-2:#16264a;
+  --bg-3:#1d3056;
+  --border:#2a3f6b;
+  --border-2:#3a5285;
+  --text:#e8ecf3;
+  --text-dim:#9aa8c2;
+  --accent:#f5a524;
+  --accent-2:#ffb84d;
+  --val:#ffd166;
+  --ok:#4ade80;
+  --ok-bg:#0e3320;
+  --warn:#fbbf24;
+  --warn-bg:#3a2a08;
+  --bad:#f87171;
+  --bad-bg:#3a1414;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;-webkit-text-size-adjust:100%}
+header{background:linear-gradient(180deg,#16264a 0%,#0f1d35 100%);padding:12px;text-align:center;border-bottom:2px solid var(--accent);position:sticky;top:0;z-index:10;box-shadow:0 2px 10px rgba(0,0,0,0.3)}
+header .title{font-size:18px;color:var(--accent);font-weight:700;letter-spacing:1px}
+header .sub{font-size:11px;color:var(--text-dim);margin-top:3px;letter-spacing:0.5px}
+.tabs{display:flex;background:#0a1628;border-bottom:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab{flex:0 0 auto;padding:12px 14px;font-size:13px;cursor:pointer;border-bottom:3px solid transparent;color:var(--text-dim);white-space:nowrap;font-weight:600;letter-spacing:0.3px}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);background:var(--bg-2)}
+.page{display:none;padding:12px}
+.page.active{display:block}
+fieldset{border:1px solid var(--border);border-radius:10px;margin:0 0 12px;padding:10px 12px 8px;background:var(--bg-2);box-shadow:0 2px 6px rgba(0,0,0,0.2)}
+legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase}
+.row{display:flex;align-items:center;gap:8px;margin:5px 0;min-height:34px;padding:2px 0;border-bottom:1px solid rgba(58,82,133,0.2)}
+.row:last-child{border-bottom:none}
+.row label{flex:1;font-size:13px;color:var(--text);line-height:1.3}
+.row input{width:85px;background:#0a1628;border:1px solid var(--border-2);border-radius:6px;color:var(--val);padding:6px 8px;font-size:14px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.row input:focus{outline:none;border-color:var(--accent);background:#1a2540;box-shadow:0 0 0 2px rgba(245,165,36,0.2)}
+.row .unit{width:34px;color:var(--text-dim);font-size:12px;text-align:left;font-weight:500}
+.row .ref{color:var(--accent-2);font-size:14px;text-align:right;width:85px;font-variant-numeric:tabular-nums;font-weight:600;padding-right:8px}
+.btn{margin:10px 0 6px;padding:13px;border-radius:8px;border:none;background:var(--accent);color:#0a1628;font-weight:700;font-size:14px;width:100%;cursor:pointer;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(245,165,36,0.3)}
+.btn:active{background:var(--accent-2);transform:translateY(1px)}
+.result{margin-top:10px;padding:12px;border-radius:8px;background:var(--bg-2);border:1px solid var(--border);font-size:13px;line-height:1.6}
+.result .big{font-size:24px;font-weight:700;display:block;margin:6px 0;font-variant-numeric:tabular-nums;letter-spacing:0.5px}
+.ok{color:var(--ok)}
+.warn{color:var(--warn)}
+.bad{color:var(--bad)}
+.notes{font-size:11px;color:var(--text-dim);line-height:1.6;padding:10px 12px;background:rgba(10,22,40,0.5);border-radius:8px;border:1px dashed var(--border);margin-top:10px}
+.notes b{color:var(--accent-2)}
+.section-title{font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px;font-weight:700;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.kvline{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px dotted rgba(58,82,133,0.3);font-size:13px}
+.kvline:last-child{border:0}
+.kvline .k{color:var(--text-dim)}
+.kvline .v{color:var(--val);font-variant-numeric:tabular-nums;font-weight:700}
+.kvline .v.ok{color:var(--ok)}
+.kvline .v.warn{color:var(--warn)}
+.kvline .v.bad{color:var(--bad)}
+.banner-ok{background:var(--ok-bg);border:1px solid var(--ok);color:var(--ok);padding:10px;border-radius:8px;margin-bottom:8px;font-size:13px;text-align:center;font-weight:600}
+.banner-warn{background:var(--warn-bg);border:1px solid var(--warn);color:var(--warn);padding:10px;border-radius:8px;margin-bottom:8px;font-size:12px;text-align:center}
+.banner-bad{background:var(--bad-bg);border:1px solid var(--bad);color:var(--bad);padding:10px;border-radius:8px;margin-bottom:8px;font-size:13px;text-align:center;font-weight:700}
+.verdict-box{margin-top:10px;padding:14px;border-radius:8px;text-align:center;font-weight:700;font-size:14px;letter-spacing:0.3px}
+.verdict-ok{background:var(--ok-bg);border:2px solid var(--ok);color:var(--ok)}
+.verdict-warn{background:var(--warn-bg);border:2px solid var(--warn);color:var(--warn)}
+.verdict-bad{background:var(--bad-bg);border:2px solid var(--bad);color:var(--bad)}
+.runway-toggle{display:flex;gap:8px;margin:5px 0}
+.runway-toggle label{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;border:2px solid var(--border-2);border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;background:#0a1628;color:var(--text-dim);transition:all 0.15s}
+.runway-toggle input[type="radio"]{display:none}
+.runway-toggle input[type="radio"]:checked + span{color:var(--accent)}
+.runway-toggle label:has(input:checked){border-color:var(--accent);background:var(--bg-3);color:var(--accent);box-shadow:0 0 0 2px rgba(245,165,36,0.15)}
+.row.hidden{display:none}
+.sync-tag{display:inline-block;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:600;letter-spacing:0.3px;vertical-align:middle}
+.sync-tag.synced{background:rgba(74,222,128,0.15);color:var(--ok);border:1px solid var(--ok)}
+.sync-tag.manual{background:rgba(251,191,36,0.15);color:var(--warn);border:1px solid var(--warn)}
+.btn-mini{flex:1;padding:8px 10px;border-radius:6px;border:1px solid var(--border-2);background:#0a1628;color:var(--text-dim);font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s}
+.btn-mini:active{background:var(--bg-3);color:var(--accent);border-color:var(--accent)}
+.btn-mini.disabled{opacity:0.4;pointer-events:none}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title">DR400/160 F-HREJ</div>
+  <div class="sub">PRÉVOL · Formule HP-19 · Usage non certifié</div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-page="p1">1·Carburant</div>
+  <div class="tab" data-page="p2">2·Bilan</div>
+  <div class="tab" data-page="p3">3·Centrage</div>
+  <div class="tab" data-page="p4">4·Décollage</div>
+  <div class="tab" data-page="p5">5·Col</div>
+  <div class="tab" data-page="p6">6·Wave</div>
+  <div class="tab" data-page="p7">7·Givrage</div>
+  <div class="tab" data-page="p8">8·Atterrissage</div>
+</div>
+
+<!-- ONGLET 1 : Carburant -->
+<div id="p1" class="page active">
+  <fieldset>
+    <legend>⛽ Niveaux actuels avion</legend>
+    <div class="row"><label>Réservoir gauche (LFG)</label><input id="LFG" type="number" step="1" value="20"><span class="unit">L</span></div>
+    <div class="row"><label>Réservoir principal (LFAR)</label><input id="LFAR" type="number" step="1" value="80"><span class="unit">L</span></div>
+    <div class="row"><label>Réservoir droit (LFD)</label><input id="LFD" type="number" step="1" value="20"><span class="unit">L</span></div>
+  </fieldset>
+  <button class="btn" onclick="calcAll()">Calculer tous les onglets</button>
+  <div id="p1_out" class="result"></div>
+  <div class="notes">
+    <b>Limites DR400/160 :</b><br>
+    • LFG max = 40 L | LFD max = 40 L | LFAR max = 110 L | Total max = 190 L<br>
+    • LFAV = LFG + LFD (alimentation moteur en croisière)<br>
+    • Densité avgas : 0,72 kg/L
+  </div>
+</div>
+
+<!-- ONGLET 2 : Bilan carburant -->
+<div id="p2" class="page">
+  <fieldset>
+    <legend>✏️ Données du vol</legend>
+    <div class="row"><label>Distance à parcourir (DIST)</label><input id="DIST" type="number" step="1" value="150"><span class="unit">NM</span></div>
+    <div class="row"><label>Vitesse sol croisière (VGS)</label><input id="VGS" type="number" step="1" value="120"><span class="unit">kt</span></div>
+    <div class="row"><label>Conso croisière (CONSO)</label><input id="CONSO" type="number" step="0.5" value="35"><span class="unit">L/h</span></div>
+    <div class="row"><label>Conso économique (CONSECO)</label><input id="CONSECO" type="number" step="0.5" value="35"><span class="unit">L/h</span></div>
+    <div class="row"><label>Carburant montée</label><input id="MONTEE" type="number" step="0.5" value="3"><span class="unit">L</span></div>
+    <div class="row"><label>Carburant descente</label><input id="DESCENTE" type="number" step="0.5" value="2"><span class="unit">L</span></div>
+    <div class="row"><label>Carburant roulage (TAXI)</label><input id="TAXI" type="number" step="0.5" value="1"><span class="unit">L</span></div>
+    <div class="row"><label>Marge prudence (h.mm)</label><input id="MARGET" type="number" step="0.05" value="0.30"><span class="unit">h.mm</span></div>
+  </fieldset>
+  <button class="btn" onclick="calcAll()">Calculer bilan carburant</button>
+  <div id="p2_out" class="result"></div>
+  <div class="notes">
+    <b>Formule HP-19 :</b> APPOINT = (DIST/VGS)×CONSO×1,1 + MONTEE + DESCENTE + TAXI + (30+15)/60×CONSECO + MARGEL − LFAV − LFAR<br>
+    • ×1,1 sur croisière : marge 10 % vent / nav / moteur<br>
+    • Réserve légale (45 min) calculée sur CONSECO<br>
+    • MARGET en h.mm (ex : 0.30 = 30 min | 1.00 = 1 h)
+  </div>
+</div>
+
+<!-- ONGLET 3 : Centrage — limites formule HP-19 (référence opérationnelle) -->
+<div id="p3" class="page">
+  <fieldset>
+    <legend>⚖️ Masses</legend>
+    <div class="row"><label>Masse à vide (MVIDE)</label><input id="MVIDE" type="number" step="0.1" value="621.3"><span class="unit">kg</span></div>
+    <div class="row"><label>Masse pilote (MPIL)</label><input id="MPIL" type="number" step="1" value="80"><span class="unit">kg</span></div>
+    <div class="row"><label>Masse passager (MPAX)</label><input id="MPAX" type="number" step="1" value="0"><span class="unit">kg</span></div>
+    <div class="row"><label>Masse bagages (MBAG)</label><input id="MBAG" type="number" step="1" value="0"><span class="unit">kg</span></div>
+  </fieldset>
+  <button class="btn" onclick="calcAll()">Calculer centrage</button>
+  <div id="p3_out" class="result"></div>
+  <div class="notes">
+    <b>Bras de levier (mm) :</b> MVIDE = 316 | Pilote = 410 | Pax = 1190 | Bagages = 1900 | LFAV = 100 | LFAR = 1120<br>
+    <b>Limites cat. N (formule HP-19) :</b><br>
+    • Limite AV : 250 mm (≤ 650 kg) → 450 mm (≥ 950 kg) — interpolation 650-950 kg<br>
+    • Limite AR : 400 mm (≤ 650 kg) → 550 mm (≥ 950 kg) — interpolation 650-950 kg<br>
+    • Plage masse : 550 ≤ M ≤ 1050 kg
+  </div>
+</div>
+
+<!-- ONGLET 4 : Décollage -->
+<div id="p4" class="page">
+  <fieldset>
+    <legend>🛬 Type de piste</legend>
+    <div class="runway-toggle">
+      <label><input type="radio" name="RWY" value="dur" checked><span>Piste en dur</span></label>
+      <label><input type="radio" name="RWY" value="herbe"><span>Piste en herbe</span></label>
+    </div>
+  </fieldset>
+  <fieldset>
+    <legend>✈️ Conditions terrain</legend>
+    <div class="row"><label>OAT — Température extérieure</label><input id="OAT" type="number" step="1" value="15"><span class="unit">°C</span></div>
+    <div class="row"><label>ALT0 — Altitude terrain</label><input id="ALT0" type="number" step="1" value="1187"><span class="unit">ft</span></div>
+    <div class="row"><label>QNH — Calage altimétrique</label><input id="QNH" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
+    <div class="row"><label>Pente piste S (+ montante)</label><input id="SLOPE" type="number" step="0.5" value="0"><span class="unit">%</span></div>
+    <div class="row"><label>Masse au décollage (auto)</label><span class="ref" id="M_TKOF_REF">—</span><span class="unit">kg</span></div>
+  </fieldset>
+  <button class="btn" onclick="calcAll()">Calculer distance décollage</button>
+  <div id="p4_out" class="result"></div>
+  <div class="notes">
+    <b>Domaine de validité :</b> 850 ≤ M ≤ 1050 kg | 0 ≤ PA ≤ 4000 ft | −5 % ≤ S ≤ +5 %<br>
+    Plein régime, volets 1er cran, vent nul. Distance pour passer 15 m (1,3 Vsl).<br>
+    <b>Source :</b> tableau constructeur DR400/160 — formules HP-19 béton et herbe.
+  </div>
+</div>
+
+<!-- ONGLET 5 : Col -->
+<div id="p5" class="page">
+  <fieldset>
+    <legend>🏔 Terrain & navigation</legend>
+    <div class="row"><label>Altitude terrain (auto)</label><span class="ref" id="ALTDEP_REF">—</span><span class="unit">ft</span></div>
+    <div class="row"><label>Altitude col (ALTcol)</label><input id="ALTCOL" type="number" step="50" value="4100"><span class="unit">ft</span></div>
+    <div class="row"><label>Distance terrain→col</label><input id="DIST_COL" type="number" step="1" value="8"><span class="unit">NM</span></div>
+    <div class="row"><label>Vitesse indiquée (VIAS)</label><input id="VIAS" type="number" step="1" value="80"><span class="unit">kt</span></div>
+    <div class="row"><label>Cap magnétique (CAP)</label><input id="CAP" type="number" step="1" value="130"><span class="unit">°</span></div>
+  </fieldset>
+  <fieldset>
+    <legend>☀ Météo & masse</legend>
+    <div class="row"><label>QNH (auto)</label><span class="ref" id="QNH_REF">—</span><span class="unit">hPa</span></div>
+    <div class="row"><label>Temp. terrain (auto)</label><span class="ref" id="OATDEP_REF">—</span><span class="unit">°C</span></div>
+    <div class="row"><label>Temp. au col (TLEV)</label><input id="TLEV" type="number" step="1" value="25"><span class="unit">°C</span></div>
+    <div class="row"><label>Altitude Windy (ZLEV)</label><input id="ZLEV" type="number" step="100" value="4500"><span class="unit">ft</span></div>
+    <div class="row"><label>Masse (auto)</label><span class="ref" id="M_COL_REF">—</span><span class="unit">kg</span></div>
+    <div class="row"><label>Direction vent (WDIR)</label><input id="WDIR" type="number" step="5" value="260"><span class="unit">°</span></div>
+    <div class="row"><label>Vitesse vent (WSPD)</label><input id="WSPD" type="number" step="1" value="15"><span class="unit">kt</span></div>
+  </fieldset>
+  <button class="btn" onclick="calcAll()">Calculer marge franchissement</button>
+  <div id="p5_out" class="result"></div>
+  <div class="notes">
+    • PALEV = ZLEV + (1013 − QNH) × 27 (HP-19)<br>
+    • Intégration Simpson : (VSDEP + 4×VSmid + VSCOL) / 6<br>
+    • Marge recommandée ≥ 1000 ft (CAA SS35)<br>
+    • Réglementation O₂ : > 10000 ft équipage si > 30 min | > 13000 ft tous (NCO.OP.190)
+  </div>
+</div>
+
+<!-- ONGLET 6 : Wave -->
+<div id="p6" class="page">
+  <fieldset>
+    <legend>🌊 Vent / relief</legend>
+    <div class="row"><label>Cap route (auto)</label><span class="ref" id="CAP_REF">—</span><span class="unit">°</span></div>
+    <div class="row"><label>Direction vent (auto)</label><span class="ref" id="WDIR_REF">—</span><span class="unit">°</span></div>
+    <div class="row"><label>Force vent (auto)</label><span class="ref" id="WSPD_REF">—</span><span class="unit">kt</span></div>
+    <div class="row"><label>Orientation chaîne</label><input id="CHAIN" type="number" step="5" value="45"><span class="unit">°</span></div>
+  </fieldset>
+  <button class="btn" onclick="calcAll()">Évaluer risque wave</button>
+  <div id="p6_out" class="result"></div>
+  <div class="notes">
+    • Vosges NE-SW = 45° | Alpes NE-SW = 45° | Pyrénées E-W = 90°<br>
+    • Composante ⊥ ≥ 20 kt : ondes marquées, lenticulaires probables<br>
+    • Vent ≥ 30 kt : turbulences sévères sous le vent du relief<br>
+    • Lenticulaires (nuages en soucoupe) = signe visible d'onde
+  </div>
+</div>
+
+<!-- ONGLET 7 : Givrage -->
+<div id="p7" class="page">
+  <fieldset>
+    <legend>❄ Mode de saisie</legend>
+    <div class="runway-toggle">
+      <label><input type="radio" name="ICEMODE" value="rh" checked><span>OAT + Humidité</span></label>
+      <label><input type="radio" name="ICEMODE" value="td"><span>Dew point direct</span></label>
+    </div>
+  </fieldset>
+  <fieldset>
+    <legend>🌡 Conditions atmosphériques</legend>
+    <div class="row">
+      <label>OAT — Température <span id="OAT_ICE_SYNC" class="sync-tag"></span></label>
+      <input id="OAT_ICE" type="number" step="1" value="15"><span class="unit">°C</span>
+    </div>
+    <div class="row" style="border:none;padding-top:0">
+      <button type="button" class="btn-mini" id="btn_sync_oat">🔄 Resynchroniser sur onglet 4</button>
+    </div>
+    <div class="row" id="row_RH"><label>Humidité relative (RH)</label><input id="RH" type="number" step="1" min="1" max="100" value="70"><span class="unit">%</span></div>
+    <div class="row hidden" id="row_TDEW"><label>Dew point (TDEW)</label><input id="TDEW0" type="number" step="0.1" value="10"><span class="unit">°C</span></div>
+  </fieldset>
+  <fieldset>
+    <legend>⚙ Régime moteur</legend>
+    <div class="row"><label>RPM moteur</label><input id="RPM" type="number" step="50" value="2400"><span class="unit">tpm</span></div>
+  </fieldset>
+  <button class="btn" onclick="calcAll()">Évaluer risque givrage</button>
+  <div id="p7_out" class="result"></div>
+  <div class="notes">
+    <b>Formule HP-19 — Givrage carburateur :</b><br>
+    • Dew point (Magnus) : TD = 243,12 × α / (17,62 − α) avec α = (17,62×OAT/(243,12+OAT)) + ln(RH/100)<br>
+    • Niveau de base RC selon écart (OAT − TD)<br>
+    • Si RPM ≤ 1999 (ralenti/descente) et RC > 0 → +1 cran (plafonné à 3)<br>
+    <b>Niveaux :</b> 0 = nul · 1 = léger · 2 = modéré · 3 = sévère
+  </div>
+</div>
+
+<!-- ONGLET 8 : Atterrissage -->
+<div id="p8" class="page">
+  <fieldset>
+    <legend>🛬 Type de freinage / piste</legend>
+    <div class="runway-toggle">
+      <label><input type="radio" name="LDG" value="beton" checked><span>Frein modéré (béton)</span></label>
+      <label><input type="radio" name="LDG" value="herbe"><span>Sans frein (herbe)</span></label>
+    </div>
+  </fieldset>
+  <fieldset>
+    <legend>✈️ Conditions terrain</legend>
+    <div class="row"><label>OAT atterrissage (auto)</label><span class="ref" id="OAT_LDG_REF">—</span><span class="unit">°C</span></div>
+    <div class="row"><label>Altitude terrain (auto)</label><span class="ref" id="ALT_LDG_REF">—</span><span class="unit">ft</span></div>
+    <div class="row"><label>QNH (auto)</label><span class="ref" id="QNH_LDG_REF">—</span><span class="unit">hPa</span></div>
+    <div class="row"><label>Vent de face (WFACE)</label><input id="WFACE" type="number" step="1" value="0"><span class="unit">kt</span></div>
+    <div class="row"><label>Masse atterrissage (auto — modifiable) <span id="M_LDG_SYNC" class="sync-tag synced">🔗 auto</span></label><input id="M_LDG" type="number" step="0.1" value="0"><span class="unit">kg</span></div>
+  </fieldset>
+  <button class="btn" onclick="calcAll()">Calculer distance atterrissage</button>
+  <div id="p8_out" class="result"></div>
+  <div class="notes">
+    <b>Source :</b> tableau constructeur DR400/160 — Manuel de vol Ed.1 du 10-05-1972<br>
+    • Volets 2e cran | Vent nul | Distance depuis passage 15 m jusqu'à l'arrêt<br>
+    • Interpolation linéaire entre 845 kg et 1045 kg, et entre PA 0 / 4000 / 8000 ft<br>
+    • Correction vent de face : ×0,80 pour 10 kt | ×0,66 pour 20 kt | ×0,55 pour 30 kt (interpolé)<br>
+    • Masse ldg = M_décollage − (croisière + montée + descente + roulage) × 0,72 — hypothèse pessimiste<br>
+    • Masse max atterrissage : <b>1045 kg</b> | Champ modifiable manuellement<br>
+    • <b>Usage non certifié — toujours vérifier sur le manuel constructeur</b>
+  </div>
+</div>
+
+<script>
+const DENS = 0.72;
+const LFG_MAX = 40, LFD_MAX = 40, LFAR_MAX = 110;
+const LFAV_MAX = LFG_MAX + LFD_MAX;
+const M_MIN = 550, M_MAX = 1050, M_MAX_LDG = 1045;
+const ARM = { vide: 316, pil: 410, pax: 1190, bag: 1900, lfav: 100, lfar: 1120 };
+
+const FIELDS = ['LFG','LFD','LFAR',
+  'DIST','VGS','CONSO','CONSECO','MONTEE','DESCENTE','TAXI','MARGET',
+  'MVIDE','MPIL','MPAX','MBAG',
+  'OAT','ALT0','QNH','SLOPE',
+  'ALTCOL','DIST_COL','VIAS','CAP','TLEV','ZLEV','WDIR','WSPD','CHAIN',
+  'RH','TDEW0','RPM','OAT_ICE','WFACE','M_LDG'];
+
+function saveAll(){
+  FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) localStorage.setItem('hrej_'+id, el.value);
+  });
+  const rwy = document.querySelector('input[name="RWY"]:checked');
+  if(rwy) localStorage.setItem('hrej_RWY', rwy.value);
+  const ice = document.querySelector('input[name="ICEMODE"]:checked');
+  if(ice) localStorage.setItem('hrej_ICEMODE', ice.value);
+  const ldg = document.querySelector('input[name="LDG"]:checked');
+  if(ldg) localStorage.setItem('hrej_LDG', ldg.value);
+}
+
+function loadAll(){
+  FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    const v = localStorage.getItem('hrej_'+id);
+    if(v !== null && v !== '') el.value = v;
+  });
+  const rwy = localStorage.getItem('hrej_RWY');
+  if(rwy){ const el = document.querySelector(`input[name="RWY"][value="${rwy}"]`); if(el) el.checked = true; }
+  const ice = localStorage.getItem('hrej_ICEMODE');
+  if(ice){ const el = document.querySelector(`input[name="ICEMODE"][value="${ice}"]`); if(el) el.checked = true; }
+  const ldg = localStorage.getItem('hrej_LDG');
+  if(ldg){ const el = document.querySelector(`input[name="LDG"][value="${ldg}"]`); if(el) el.checked = true; }
+  if(localStorage.getItem('hrej_OAT_ICE_SYNC') === null) localStorage.setItem('hrej_OAT_ICE_SYNC', 'auto');
+  if(localStorage.getItem('hrej_OAT_ICE_SYNC') === 'auto'){
+    const oat4 = document.getElementById('OAT');
+    const oatIce = document.getElementById('OAT_ICE');
+    if(oat4 && oatIce) oatIce.value = oat4.value;
+  }
+  updateIceModeUI();
+  updateOatSyncUI();
+}
+
+function v(id){ return +document.getElementById(id).value || 0; }
+
+function updateIceModeUI(){
+  const ice = document.querySelector('input[name="ICEMODE"]:checked');
+  const mode = ice ? ice.value : 'rh';
+  document.getElementById('row_RH').classList.toggle('hidden', mode !== 'rh');
+  document.getElementById('row_TDEW').classList.toggle('hidden', mode !== 'td');
+}
+
+function updateOatSyncUI(){
+  const syncState = localStorage.getItem('hrej_OAT_ICE_SYNC') || 'auto';
+  const tag = document.getElementById('OAT_ICE_SYNC');
+  const btn = document.getElementById('btn_sync_oat');
+  if(syncState === 'auto'){
+    tag.textContent = '🔗 lié onglet 4';
+    tag.className = 'sync-tag synced';
+    btn.classList.add('disabled');
+    btn.textContent = '✓ Déjà synchronisé sur onglet 4';
+  } else {
+    tag.textContent = '✋ manuel';
+    tag.className = 'sync-tag manual';
+    btn.classList.remove('disabled');
+    btn.textContent = '🔄 Resynchroniser sur onglet 4';
+  }
+}
+
+document.querySelectorAll('.tab').forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById(t.dataset.page).classList.add('active');
+    calcAll();
+  };
+});
+
+document.querySelectorAll('input[name="ICEMODE"]').forEach(el => {
+  el.addEventListener('change', () => { updateIceModeUI(); calcAll(); });
+});
+
+// ============================================================
+// ONGLET 1
+// ============================================================
+function calc1(){
+  const LFG = v('LFG'), LFD = v('LFD'), LFAR = v('LFAR');
+  const LFAV = LFG + LFD;
+  const total = LFAV + LFAR;
+  const totalKg = total * DENS;
+  let alerts = '';
+  if(LFG > LFG_MAX) alerts += `<div class="banner-bad">❌ LFG dépassement (max ${LFG_MAX} L)</div>`;
+  if(LFD > LFD_MAX) alerts += `<div class="banner-bad">❌ LFD dépassement (max ${LFD_MAX} L)</div>`;
+  if(LFAV > LFAV_MAX) alerts += `<div class="banner-bad">❌ LFAV dépassement (max ${LFAV_MAX} L)</div>`;
+  if(LFAR > LFAR_MAX) alerts += `<div class="banner-bad">❌ LFAR dépassement (max ${LFAR_MAX} L)</div>`;
+  if(!alerts) alerts = `<div class="banner-ok">✅ Capacités OK</div>`;
+  let html = alerts;
+  html += `<div class="kvline"><span class="k">Carburant avant utilisable (LFAV)</span><span class="v">${LFAV.toFixed(1)} L</span></div>`;
+  html += `<div class="kvline"><span class="k">Carburant arrière (LFAR)</span><span class="v">${LFAR.toFixed(1)} L</span></div>`;
+  html += `<div class="kvline"><span class="k">Carburant total</span><span class="v">${total.toFixed(1)} L</span></div>`;
+  html += `<div class="kvline"><span class="k">Masse carburant</span><span class="v">${totalKg.toFixed(1)} kg</span></div>`;
+  document.getElementById('p1_out').innerHTML = html;
+  return { LFG, LFD, LFAR, LFAV, total, totalKg };
+}
+
+// ============================================================
+// ONGLET 2
+// ============================================================
+function calc2(){
+  const c1 = calc1();
+  const DIST = v('DIST'), VGS = v('VGS'), CONSO = v('CONSO'), CONSECO = v('CONSECO');
+  const MONTEE = v('MONTEE'), DESCENTE = v('DESCENTE'), TAXI = v('TAXI'), MARGET = v('MARGET');
+  const fuel_crz = (DIST / Math.max(VGS, 0.001)) * CONSO * 1.1;
+  const t_crz_min = (DIST / Math.max(VGS, 0.001)) * 60;
+  const reserve_legale = (30 + 15) / 60 * CONSECO;
+  const MARGET_h = Math.floor(MARGET) + (MARGET - Math.floor(MARGET)) * 100 / 60;
+  const margel_L = MARGET_h * CONSO;
+  const fuel_total = fuel_crz + MONTEE + DESCENTE + TAXI + reserve_legale + margel_L;
+  const embarque = c1.LFAV + c1.LFAR;
+  const appoint = Math.max(0, fuel_total - embarque);
+  let html = '';
+  html += `<div class="section-title">Consommations calculées</div>`;
+  html += `<div class="kvline"><span class="k">Temps de vol croisière</span><span class="v">${t_crz_min.toFixed(0)} min</span></div>`;
+  html += `<div class="kvline"><span class="k">Carburant croisière (×1,1)</span><span class="v">${fuel_crz.toFixed(1)} L</span></div>`;
+  html += `<div class="kvline"><span class="k">Réserve légale (45 min)</span><span class="v">${reserve_legale.toFixed(1)} L</span></div>`;
+  html += `<div class="kvline"><span class="k">Marge prudence pilote</span><span class="v">${margel_L.toFixed(1)} L</span></div>`;
+  html += `<div class="section-title">Bilan</div>`;
+  html += `<div class="kvline"><span class="k">Carburant nécessaire total</span><span class="v">${fuel_total.toFixed(1)} L</span></div>`;
+  html += `<div class="kvline"><span class="k">Carburant embarqué</span><span class="v">${embarque.toFixed(1)} L</span></div>`;
+  if(appoint > 0){
+    html += `<div class="verdict-box verdict-warn">⛽ APPOINT NÉCESSAIRE<span class="big">${appoint.toFixed(1)} L</span><span style="font-size:11px;opacity:0.8">Répartition LA/LR onglet 3</span></div>`;
+  } else {
+    const marge = embarque - fuel_total;
+    html += `<div class="verdict-box verdict-ok">✅ BILAN OK<span class="big">+${marge.toFixed(1)} L de marge</span></div>`;
+  }
+  document.getElementById('p2_out').innerHTML = html;
+  return { fuel_total, embarque, appoint };
+}
+
+// ============================================================
+// ONGLET 3 — Centrage
+// Limites formule HP-19 (référence opérationnelle) :
+//   Limite AV : 250 mm si M ≤ 650 kg
+//               250 + 0,5×(M-650) si 650 < M ≤ 950 kg
+//               450 mm si M > 950 kg
+//   Limite AR : 400 + 0,333×(M-650) si M ≤ 950 kg
+//               550 mm si M > 950 kg
+// ============================================================
+function calc3(){
+  const c1 = calc1();
+  const c2 = calc2();
+  const MVIDE = v('MVIDE'), MPIL = v('MPIL'), MPAX = v('MPAX'), MBAG = v('MBAG');
+  const mFuelLFAV = c1.LFAV * DENS;
+  const mFuelLFAR = c1.LFAR * DENS;
+  const M = MVIDE + MPIL + MPAX + MBAG + mFuelLFAV + mFuelLFAR;
+  const moment = MVIDE * ARM.vide + MPIL * ARM.pil + MPAX * ARM.pax + MBAG * ARM.bag
+               + mFuelLFAV * ARM.lfav + mFuelLFAR * ARM.lfar;
+  const CG = moment / Math.max(M, 0.001);
+
+  // Limites HP-19 (formule de référence opérationnelle)
+  function limAv(m){
+    if(m <= 650) return 250;
+    if(m <= 950) return 250 + 0.5 * (m - 650);
+    return 450;
+  }
+  function limAr(m){
+    if(m <= 950) return 400 + 0.333 * (m - 650);
+    return 550;
+  }
+  const CGav = limAv(M);
+  const CGar = limAr(M);
+
+  let verdict, vClass;
+  if(M > M_MAX)       { verdict = '❌ MASSE MAX dépassée';    vClass = 'verdict-bad'; }
+  else if(M < M_MIN)  { verdict = '❌ MASSE MIN non atteinte'; vClass = 'verdict-bad'; }
+  else if(CG < CGav)  { verdict = '❌ CG TROP AVANT';         vClass = 'verdict-bad'; }
+  else if(CG > CGar)  { verdict = '❌ CG TROP ARRIÈRE';       vClass = 'verdict-bad'; }
+  else                { verdict = '✅ CENTRAGE OK';            vClass = 'verdict-ok'; }
+
+  // Répartition appoint (formule HP-19 — inchangée)
+  const APPOINT = c2.appoint;
+  const X = M + DENS * APPOINT;
+  const FA_app = limAv(X);
+  const FR_app = limAr(X);
+  const MOY = (FA_app + FR_app) / 2;
+  const G = (M * CG + DENS * APPOINT * ARM.lfar - MOY * X) / (ARM.lfar - ARM.lfav);
+  const FMAX = Math.max(0, LFAV_MAX - c1.LFAV);
+  const RMAX = Math.max(0, LFAR_MAX - c1.LFAR);
+  const LB = Math.max(0, APPOINT - RMAX);
+  const LZ = Math.min(APPOINT, Math.max(0, G));
+  const LA = Math.round(Math.min(FMAX, Math.max(LB, LZ)));
+  const LR = Math.round(APPOINT - LA);
+
+  let html = '';
+  html += `<div class="section-title">Centrage actuel</div>`;
+  html += `<div class="kvline"><span class="k">Masse totale (M)</span><span class="v">${M.toFixed(1)} kg</span></div>`;
+  html += `<div class="kvline"><span class="k">Centre de gravité (CG)</span><span class="v">${CG.toFixed(1)} mm</span></div>`;
+  html += `<div class="kvline"><span class="k">Limite CG avant</span><span class="v">${CGav.toFixed(0)} mm</span></div>`;
+  html += `<div class="kvline"><span class="k">Limite CG arrière</span><span class="v">${CGar} mm</span></div>`;
+  html += `<div class="verdict-box ${vClass}">${verdict}</div>`;
+
+  if(APPOINT > 0){
+    html += `<div class="section-title">Répartition appoint</div>`;
+    html += `<div class="kvline"><span class="k">⛽ Appoint LFAV (LA) — bras 100 mm</span><span class="v">${LA} L</span></div>`;
+    html += `<div class="kvline"><span class="k">⛽ Appoint LFAR (LR) — bras 1120 mm</span><span class="v">${LR} L</span></div>`;
+    html += `<div class="kvline"><span class="k">Total appoint</span><span class="v">${LA+LR} L</span></div>`;
+    if(LA > FMAX) html += `<div class="banner-bad">⚠️ LA > capacité restante LFAV (${FMAX.toFixed(0)} L)</div>`;
+    if(LR > RMAX) html += `<div class="banner-bad">⚠️ LR > capacité restante LFAR (${RMAX.toFixed(0)} L)</div>`;
+  } else {
+    html += `<div class="banner-ok" style="margin-top:10px">✅ Pas d'appoint nécessaire</div>`;
+  }
+  document.getElementById('p3_out').innerHTML = html;
+  return { M, CG, LA, LR };
+}
+
+// ============================================================
+// ONGLET 4 — Décollage (inchangé)
+// ============================================================
+function distBeton(M, PA, dT, SLOPE){
+  function b1(t){ return t <= 0 ? 360 + 1.75*(t+20) : 395 + 2*t; }
+  function b2(t){ return t <= 0 ? 560 + 3*(t+20)    : 620 + 3.5*t; }
+  function b3(t){ return t <= 0 ? 470 + 2.75*(t+20) : 525 + 2.75*t; }
+  function b4(t){ return t <= 0 ? 750 + 4.5*(t+20)  : 840 + 5*t; }
+  const massCoef = (M - 850) / 200;
+  const termM_PA0 = b1(dT) + massCoef * (b2(dT) - b1(dT));
+  const termM_PA4 = b3(dT) + massCoef * (b4(dT) - b3(dT));
+  return (termM_PA0 + (PA / 4000) * (termM_PA4 - termM_PA0)) * (1 + SLOPE / 100);
+}
+function distHerbe(M, PA, dT, SLOPE){
+  function h1(t){ return t <= 0 ? 405 + 2.25*(t+20) : 445 + 2.75*t; }
+  function h2(t){ return t <= 0 ? 660 + 4.25*(t+20) : 745 + 4.25*t; }
+  function h3(t){ return t <= 15 ? 550 + 3.25*(t+20) : 615 + 15*(t-15); }
+  function h4(t){ return t <= 0 ? 925 + 6.5*(t+20)  : 1055 + 7*t; }
+  const massCoef = (M - 850) / 200;
+  const termM_PA0 = h1(dT) + massCoef * (h2(dT) - h1(dT));
+  const termM_PA4 = h3(dT) + massCoef * (h4(dT) - h3(dT));
+  return (termM_PA0 + (PA / 4000) * (termM_PA4 - termM_PA0)) * (1 + SLOPE / 100);
+}
+
+function calc4(){
+  const c3 = calc3();
+  const OAT = v('OAT'), ALT0 = v('ALT0'), QNH = v('QNH'), SLOPE = v('SLOPE');
+  const M = c3.M;
+  const rwyEl = document.querySelector('input[name="RWY"]:checked');
+  const RWY = rwyEl ? rwyEl.value : 'dur';
+  document.getElementById('M_TKOF_REF').textContent = M.toFixed(1);
+  const PA = ALT0 + (1013 - QNH) * 30;
+  const ISA = 15 - 0.002 * PA;
+  const dT = OAT - ISA;
+  const D_dur_raw = distBeton(M, PA, dT, SLOPE);
+  const D_herbe_raw = distHerbe(M, PA, dT, SLOPE);
+  const D_dur = Math.max(0, 5 * Math.floor(D_dur_raw / 5 + 0.5));
+  const D_herbe = Math.max(0, 5 * Math.floor(D_herbe_raw / 5 + 0.5));
+  const D = (RWY === 'herbe') ? D_herbe : D_dur;
+  const ecart = D_herbe - D_dur;
+  let cls = 'verdict-ok', msg = '✅ Distance raisonnable';
+  if(D > 800){ cls = 'verdict-bad'; msg = '❌ Distance importante — reconsidérer'; }
+  else if(D > 600){ cls = 'verdict-warn'; msg = '⚠️ Vigilance — vérifier piste & obstacles'; }
+  let warn = '';
+  if(M < 850 || M > 1050) warn += `<div class="banner-warn">⚠️ Masse hors domaine décollage (850–1050 kg)</div>`;
+  if(PA < 0 || PA > 4000) warn += `<div class="banner-warn">⚠️ PA hors domaine (0–4000 ft)</div>`;
+  if(SLOPE < -5 || SLOPE > 5) warn += `<div class="banner-warn">⚠️ Pente hors domaine (−5 % à +5 %)</div>`;
+  const labelRWY = (RWY === 'herbe') ? 'PISTE EN HERBE' : 'PISTE EN DUR';
+  let html = warn;
+  html += `<div class="section-title">Conditions calculées</div>`;
+  html += `<div class="kvline"><span class="k">Type de piste</span><span class="v ${RWY==='herbe'?'warn':'ok'}">${labelRWY}</span></div>`;
+  html += `<div class="kvline"><span class="k">Altitude-pression (PA)</span><span class="v">${PA.toFixed(0)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">Écart ISA</span><span class="v">${dT>=0?'+':''}${dT.toFixed(1)} °C</span></div>`;
+  html += `<div class="verdict-box ${cls}">${msg}<span class="big">${D.toFixed(0)} m</span><span style="font-size:11px;opacity:0.8">Distance pour passer 15 m (${labelRWY.toLowerCase()})</span></div>`;
+  html += `<div class="section-title">Comparatif béton / herbe</div>`;
+  html += `<div class="kvline"><span class="k">Distance piste en dur</span><span class="v">${D_dur.toFixed(0)} m</span></div>`;
+  html += `<div class="kvline"><span class="k">Distance piste en herbe</span><span class="v">${D_herbe.toFixed(0)} m</span></div>`;
+  html += `<div class="kvline"><span class="k">Surcoût herbe vs dur</span><span class="v warn">+${ecart.toFixed(0)} m</span></div>`;
+  document.getElementById('p4_out').innerHTML = html;
+  return { PA, D, OAT, ALT0, QNH };
+}
+
+// ============================================================
+// ONGLET 5 — Col (inchangé)
+// ============================================================
+function calc5(){
+  const c3 = calc3();
+  const ALT0 = v('ALT0'), QNH = v('QNH'), OAT = v('OAT');
+  const ALTCOL = v('ALTCOL'), DIST = v('DIST_COL'), VIAS = v('VIAS'), CAP = v('CAP');
+  const TLEV = v('TLEV'), ZLEV = v('ZLEV');
+  const M = c3.M, WDIR = v('WDIR'), WSPD = v('WSPD');
+  document.getElementById('ALTDEP_REF').textContent = ALT0.toFixed(0);
+  document.getElementById('QNH_REF').textContent = QNH.toFixed(0);
+  document.getElementById('OATDEP_REF').textContent = OAT.toFixed(1);
+  document.getElementById('M_COL_REF').textContent = M.toFixed(1);
+  const PAdep = ALT0 + (1013 - QNH) * 27;
+  const PAcol = ALTCOL + (1013 - QNH) * 27;
+  const PALEV = ZLEV + (1013 - QNH) * 27;
+  const PAmid = (PAdep + PAcol) / 2;
+  const denomLEV = (PALEV - PAdep);
+  const OATcol = OAT + ((TLEV - OAT) * (PAcol - PAdep) / (denomLEV || 1));
+  const OATmid = OAT + ((TLEV - OAT) * (PAmid - PAdep) / (denomLEV || 1));
+  const ISAmid = 15 - 2 * (PAmid / 1000);
+  const DAmid = PAmid + 120 * (OATmid - ISAmid);
+  const TAS = VIAS * (1 + 0.02 * (DAmid / 1000) + 0.01 * ((OATmid - ISAmid) / 5));
+  const WIND_REL = (WDIR + 180) - CAP;
+  const rad = a => a * Math.PI / 180;
+  const sinW = Math.sin(rad(WIND_REL));
+  const cosW = Math.cos(rad(WIND_REL));
+  const inside = 1 - Math.pow(WSPD * sinW / Math.max(TAS, 0.001), 2);
+  const Vsol = TAS * Math.sqrt(Math.max(0, inside)) + WSPD * cosW;
+  function VS(temp, pa){
+    const isa = 15 - 2 * (pa / 1000);
+    const massK = (M - 850) / 200;
+    return ((5.3 - massK * (5.3 - 3.8))
+           - 0.22 * ((temp - isa) / 10)
+           - (0.25 - massK * (0.25 - 0.22)) * (pa / 1000)) * 196.85;
+  }
+  const VSDEP = VS(OAT, PAdep);
+  const VSmid = VS(OATmid, PAmid);
+  const VSCOL = VS(OATcol, PAcol);
+  const tempsMin = (60 * DIST) / Math.max(Vsol, 0.001);
+  const vzMoy = (VSDEP + 4 * VSmid + VSCOL) / 6;
+  const MARGE = tempsMin * vzMoy - (ALTCOL - ALT0);
+  let cls = 'verdict-ok', msg = '✅ Marge confortable (≥ 1000 ft)';
+  if(MARGE < 0){ cls = 'verdict-bad'; msg = '❌ FRANCHISSEMENT IMPOSSIBLE'; }
+  else if(MARGE < 500){ cls = 'verdict-bad'; msg = '❌ Marge insuffisante'; }
+  else if(MARGE < 1000){ cls = 'verdict-warn'; msg = '⚠️ Marge faible — prudence'; }
+  let html = '';
+  html += `<div class="section-title">Calculs intermédiaires</div>`;
+  html += `<div class="kvline"><span class="k">PA départ</span><span class="v">${PAdep.toFixed(0)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">PA col</span><span class="v">${PAcol.toFixed(0)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">DA moyen</span><span class="v">${DAmid.toFixed(0)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">TAS</span><span class="v">${TAS.toFixed(1)} kt</span></div>`;
+  html += `<div class="kvline"><span class="k">Vitesse sol</span><span class="v">${Vsol.toFixed(1)} kt</span></div>`;
+  html += `<div class="kvline"><span class="k">Vz départ</span><span class="v">${VSDEP.toFixed(0)} ft/min</span></div>`;
+  html += `<div class="kvline"><span class="k">Vz mi-parcours</span><span class="v">${VSmid.toFixed(0)} ft/min</span></div>`;
+  html += `<div class="kvline"><span class="k">Vz col</span><span class="v">${VSCOL.toFixed(0)} ft/min</span></div>`;
+  html += `<div class="kvline"><span class="k">Temps montée</span><span class="v">${tempsMin.toFixed(1)} min</span></div>`;
+  html += `<div class="verdict-box ${cls}">${msg}<span class="big">${MARGE.toFixed(0)} ft</span><span style="font-size:11px;opacity:0.8">Marge au col (objectif ≥ 1000 ft)</span></div>`;
+  document.getElementById('p5_out').innerHTML = html;
+  return { CAP, WDIR, WSPD };
+}
+
+// ============================================================
+// ONGLET 6 — Wave (inchangé)
+// ============================================================
+function calc6(){
+  const c5 = calc5();
+  const CAP = c5.CAP, WDIR = c5.WDIR, WSPD = c5.WSPD;
+  const CHAIN = v('CHAIN');
+  document.getElementById('CAP_REF').textContent = CAP.toFixed(0);
+  document.getElementById('WDIR_REF').textContent = WDIR.toFixed(0);
+  document.getElementById('WSPD_REF').textContent = WSPD.toFixed(0);
+  const angChain = Math.min(((Math.abs(WDIR - CHAIN)) % 180), 180 - ((Math.abs(WDIR - CHAIN)) % 180));
+  const compPerp = Math.round(WSPD * Math.sin(angChain * Math.PI / 180) * 10) / 10;
+  const angCap = Math.min(((Math.abs(WDIR - CAP)) % 360), 360 - ((Math.abs(WDIR - CAP)) % 360));
+  const compAxe = Math.round(WSPD * Math.cos(angCap * Math.PI / 180) * 10) / 10;
+  let risqueWave, classWave;
+  if(compPerp >= 20){ risqueWave = 'ÉLEVÉ'; classWave = 'bad'; }
+  else if(compPerp >= 10){ risqueWave = 'MODÉRÉ'; classWave = 'warn'; }
+  else if(compPerp >= 5){ risqueWave = 'FAIBLE'; classWave = 'ok'; }
+  else { risqueWave = 'NÉGLIGEABLE'; classWave = 'ok'; }
+  let risqueTurb, classTurb;
+  if(WSPD >= 30){ risqueTurb = 'ÉLEVÉ'; classTurb = 'bad'; }
+  else if(WSPD >= 20){ risqueTurb = 'MODÉRÉ'; classTurb = 'warn'; }
+  else if(WSPD >= 15){ risqueTurb = 'FAIBLE'; classTurb = 'ok'; }
+  else { risqueTurb = 'NÉGLIGEABLE'; classTurb = 'ok'; }
+  let effetNav;
+  if(compAxe > 0) effetNav = `VENT ARRIÈRE +${Math.abs(compAxe).toFixed(1)} kt`;
+  else if(compAxe < 0) effetNav = `VENT DE FACE ${Math.abs(compAxe).toFixed(1)} kt`;
+  else effetNav = 'VENT DE TRAVERS';
+  let traversee;
+  if(angChain >= 20) traversee = 'PERPENDICULAIRE';
+  else if(angChain >= 10) traversee = 'OBLIQUE';
+  else traversee = 'PARALLÈLE — risque réduit';
+  let verdict, classV;
+  if(compPerp < 10 && WSPD < 20){ verdict = '✅ RISQUE FAIBLE — Conditions favorables. Rester vigilant.'; classV = 'verdict-ok'; }
+  else if(compPerp < 20 && WSPD < 30){ verdict = '⚠️ RISQUE MODÉRÉ — Surveiller lenticulaires & turbulences.'; classV = 'verdict-warn'; }
+  else { verdict = '❌ RISQUE ÉLEVÉ — Report ou itinéraire alternatif.'; classV = 'verdict-bad'; }
+  let html = '';
+  html += `<div class="section-title">Calculs</div>`;
+  html += `<div class="kvline"><span class="k">Angle vent / chaîne</span><span class="v">${angChain.toFixed(0)}°</span></div>`;
+  html += `<div class="kvline"><span class="k">Composante ⊥ chaîne</span><span class="v">${compPerp.toFixed(1)} kt</span></div>`;
+  html += `<div class="kvline"><span class="k">Angle vent / cap</span><span class="v">${angCap.toFixed(0)}°</span></div>`;
+  html += `<div class="kvline"><span class="k">Composante axe route</span><span class="v">${compAxe>=0?'+':''}${compAxe.toFixed(1)} kt</span></div>`;
+  html += `<div class="section-title">Évaluation</div>`;
+  html += `<div class="kvline"><span class="k">Risque mountain wave</span><span class="v ${classWave}">${risqueWave}</span></div>`;
+  html += `<div class="kvline"><span class="k">Risque turbulence</span><span class="v ${classTurb}">${risqueTurb}</span></div>`;
+  html += `<div class="kvline"><span class="k">Effet navigation</span><span class="v">${effetNav}</span></div>`;
+  html += `<div class="kvline"><span class="k">Type de traversée</span><span class="v">${traversee}</span></div>`;
+  html += `<div class="verdict-box ${classV}">${verdict}</div>`;
+  document.getElementById('p6_out').innerHTML = html;
+}
+
+// ============================================================
+// ONGLET 7 — Givrage (inchangé)
+// ============================================================
+function calc7(){
+  const OAT = v('OAT_ICE');
+  const RH = v('RH');
+  const TDEW0 = v('TDEW0');
+  const RPM = v('RPM');
+  const iceEl = document.querySelector('input[name="ICEMODE"]:checked');
+  const mode = iceEl ? iceEl.value : 'rh';
+  const USETD = (mode === 'td') ? 1 : 0;
+  let TD;
+  if(USETD > 0){
+    TD = TDEW0;
+  } else {
+    const rhClamp = Math.max(0.01, Math.min(100, RH)) / 100;
+    const alpha = (17.62 * OAT / (243.12 + OAT)) + Math.log(rhClamp);
+    TD = 243.12 * alpha / (17.62 - alpha);
+  }
+  let RC;
+  if(TD > OAT) RC = 3;
+  else if(TD > (0.75 * OAT - 4)) RC = 3;
+  else if(TD > (0.8 * OAT - 12)) RC = 2;
+  else if(TD > OAT - 20) RC = 1;
+  else RC = 0;
+  let RES;
+  if(RPM > 1999){ RES = RC; }
+  else { if(RC > 0) RES = (RC + 1 > 3) ? 3 : RC + 1; else RES = 0; }
+  const ecart = OAT - TD;
+  const labels = ['NUL','LÉGER','MODÉRÉ','SÉVÈRE'];
+  const cls_v = ['ok','ok','warn','bad'];
+  const cls_box = ['verdict-ok','verdict-ok','verdict-warn','verdict-bad'];
+  const icons = ['✅','🟢','⚠️','❌'];
+  const phase = (RPM > 1999) ? 'Croisière / montée (RPM > 1999)' : 'Ralenti / descente (RPM ≤ 1999)';
+  const ajustement = (RPM <= 1999 && RC > 0) ? '+1 cran (plafonné à 3)' : 'Aucun';
+  let html = '';
+  html += `<div class="section-title">Calculs intermédiaires</div>`;
+  html += `<div class="kvline"><span class="k">Mode de saisie</span><span class="v">${USETD?'Dew point direct':'OAT + Humidité'}</span></div>`;
+  html += `<div class="kvline"><span class="k">OAT</span><span class="v">${OAT.toFixed(1)} °C</span></div>`;
+  if(!USETD) html += `<div class="kvline"><span class="k">Humidité relative</span><span class="v">${RH.toFixed(0)} %</span></div>`;
+  html += `<div class="kvline"><span class="k">Dew point (TD)</span><span class="v">${TD.toFixed(1)} °C</span></div>`;
+  html += `<div class="kvline"><span class="k">Écart OAT − TD</span><span class="v">${ecart.toFixed(1)} °C</span></div>`;
+  html += `<div class="section-title">Évaluation</div>`;
+  html += `<div class="kvline"><span class="k">Niveau de base (RC)</span><span class="v ${cls_v[RC]}">${RC} — ${labels[RC]}</span></div>`;
+  html += `<div class="kvline"><span class="k">Phase moteur</span><span class="v">${phase}</span></div>`;
+  html += `<div class="kvline"><span class="k">Ajustement régime</span><span class="v">${ajustement}</span></div>`;
+  html += `<div class="verdict-box ${cls_box[RES]}">${icons[RES]} RISQUE GIVRAGE ${labels[RES]}<span class="big">Niveau ${RES}</span><span style="font-size:11px;opacity:0.8">0 nul · 1 léger · 2 modéré · 3 sévère</span></div>`;
+  if(RES >= 2){ html += `<div class="banner-warn" style="margin-top:8px">💡 Surveiller chute RPM, tirer réchauffe carburateur préventivement, vérifier régulièrement en croisière et avant réduction des gaz.</div>`; }
+  else if(RES === 1){ html += `<div class="banner-ok" style="margin-top:8px">💡 Risque faible mais surveiller en descente / approche.</div>`; }
+  document.getElementById('p7_out').innerHTML = html;
+}
+
+// ============================================================
+// ONGLET 8 — Atterrissage
+// Source : Manuel de vol DR400/160 Ed.1 du 10-05-1972
+// Volets 2e cran | Vent nul de base
+// Distances depuis passage 15 m jusqu'à l'arrêt
+//
+// Tableau : [Altitude ft][dT index] → distance (m)
+// dT = OAT - ISA_locale
+//
+// Points du tableau constructeur :
+//   Alt 0 ft  : Std-20(-35°C écart), Std+15(0°C écart), Std+20(+5°C écart)
+//   Alt 4000ft : Std-20(-20°C écart), Std+7(0°C écart),  Std+20(+13°C écart)
+//   Alt 8000ft : Std-1(-1°C écart),   Std+20(+20°C écart)
+//
+// On simplifie en utilisant l'interpolation sur PA et dT
+// avec les valeurs lues aux points ISA (dT=0) et ISA+20 (dT=+20)
+// pour chaque altitude, pour les deux masses de référence.
+//
+// Masse 1045 kg — Frein modéré (béton) :
+//   PA=0    dT=0 → 545  dT=+20 → 575
+//   PA=4000 dT=0 → 600  dT=+20 → 635
+//   PA=8000 dT=0 → 660  dT=+20 → 700   (dT=-1≈0 → 660)
+//
+// Masse 1045 kg — Sans frein (herbe) :
+//   PA=0    dT=0 → 670  dT=+20 → 705
+//   PA=4000 dT=0 → 740  dT=+20 → 785
+//   PA=8000 dT=0 → 820  dT=+20 → 875
+//
+// Masse 845 kg — Frein modéré (béton) :
+//   PA=0    dT=0 → 460  dT=+20 → 485
+//   PA=4000 dT=0 → 505  dT=+20 → 535
+//   PA=8000 dT=0 → 555  dT=+20 → 585
+//
+// Masse 845 kg — Sans frein (herbe) :
+//   PA=0    dT=0 → 560  dT=+20 → 595
+//   PA=4000 dT=0 → 615  dT=+20 → 655
+//   PA=8000 dT=0 → 685  dT=+20 → 725
+// ============================================================
+
+// Données tableau constructeur : distLDG[type][masseRef][paRef] = {dt0, dt20}
+// type : 'beton' | 'herbe'
+// masseRef : 0 = 845 kg, 1 = 1045 kg
+// paRef : 0 = 0ft, 1 = 4000ft, 2 = 8000ft
+const LDG_TABLE = {
+  beton: {
+    // [PA=0ft, PA=4000ft, PA=8000ft]
+    m845:  [ {dt0: 460, dt20: 485}, {dt0: 505, dt20: 535}, {dt0: 555, dt20: 585} ],
+    m1045: [ {dt0: 545, dt20: 575}, {dt0: 600, dt20: 635}, {dt0: 660, dt20: 700} ]
+  },
+  herbe: {
+    m845:  [ {dt0: 560, dt20: 595}, {dt0: 615, dt20: 655}, {dt0: 685, dt20: 725} ],
+    m1045: [ {dt0: 670, dt20: 705}, {dt0: 740, dt20: 785}, {dt0: 820, dt20: 875} ]
+  }
+};
+const LDG_PA_REFS = [0, 4000, 8000];
+const LDG_M_REFS  = [845, 1045];
+
+function interpLDG(type, M, PA, dT){
+  // 1. Clamp dT entre 0 et +20 (extrapolation linéaire simple hors plage)
+  const tbl = LDG_TABLE[type];
+
+  // Fonction : distance pour une masseRef donnée, PA donné, dT donné
+  function distForMassRef(mRef, pa, dt){
+    const row = (mRef === 845) ? tbl.m845 : tbl.m1045;
+    // Interpolation sur PA entre les trois paliers 0 / 4000 / 8000 ft
+    let d;
+    if(pa <= 0){
+      d = row[0].dt0 + (row[0].dt20 - row[0].dt0) * (dt / 20);
+    } else if(pa <= 4000){
+      const f = pa / 4000;
+      const d0 = row[0].dt0 + (row[0].dt20 - row[0].dt0) * (dt / 20);
+      const d4 = row[1].dt0 + (row[1].dt20 - row[1].dt0) * (dt / 20);
+      d = d0 + f * (d4 - d0);
+    } else if(pa <= 8000){
+      const f = (pa - 4000) / 4000;
+      const d4 = row[1].dt0 + (row[1].dt20 - row[1].dt0) * (dt / 20);
+      const d8 = row[2].dt0 + (row[2].dt20 - row[2].dt0) * (dt / 20);
+      d = d4 + f * (d8 - d4);
+    } else {
+      // PA > 8000 ft : extrapolation linéaire depuis PA=4000 et PA=8000
+      const f = (pa - 4000) / 4000;
+      const d4 = row[1].dt0 + (row[1].dt20 - row[1].dt0) * (dt / 20);
+      const d8 = row[2].dt0 + (row[2].dt20 - row[2].dt0) * (dt / 20);
+      d = d4 + f * (d8 - d4);
+    }
+    return d;
+  }
+
+  // 2. Interpolation sur la masse entre 845 et 1045 kg
+  const mClamped = Math.max(845, Math.min(1045, M));
+  const massCoef = (mClamped - 845) / 200;
+  const d845  = distForMassRef(845,  PA, dT);
+  const d1045 = distForMassRef(1045, PA, dT);
+  return d845 + massCoef * (d1045 - d845);
+}
+
+// Correction vent de face (tableau constructeur)
+// 10 kt → ×0,80 | 20 kt → ×0,66 | 30 kt → ×0,55
+function correcVent(dist, wface){
+  if(wface <= 0) return dist;
+  // Interpolation linéaire entre les points constructeur
+  let coef;
+  if(wface <= 10){
+    coef = 1 - (1 - 0.80) * (wface / 10);
+  } else if(wface <= 20){
+    coef = 0.80 - (0.80 - 0.66) * ((wface - 10) / 10);
+  } else if(wface <= 30){
+    coef = 0.66 - (0.66 - 0.55) * ((wface - 20) / 10);
+  } else {
+    coef = 0.55; // au-delà de 30 kt, on garde 0,55
+  }
+  return dist * coef;
+}
+
+function calc8(){
+  const c3 = calc3();
+  const c2 = calc2();
+  const OAT  = v('OAT');
+  const ALT0 = v('ALT0');
+  const QNH  = v('QNH');
+  const WFACE = v('WFACE');
+  const ldgEl = document.querySelector('input[name="LDG"]:checked');
+  const LDG = ldgEl ? ldgEl.value : 'beton';
+
+  // Masse atterrissage : auto si sync, sinon valeur saisie
+  // Hypothèse pessimiste : M_ldg = M_décollage − (croisière + montée + descente + roulage) × 0,72
+  const DIST    = v('DIST'), VGS = v('VGS'), CONSO = v('CONSO');
+  const MONTEE  = v('MONTEE'), DESCENTE = v('DESCENTE'), TAXI = v('TAXI');
+  const fuel_consomme = (DIST / Math.max(VGS, 0.001)) * CONSO + MONTEE + DESCENTE + TAXI;
+  const M_auto = Math.min(M_MAX_LDG, Math.max(M_MIN, c3.M - fuel_consomme * 0.72));
+
+  const syncLDG = localStorage.getItem('hrej_M_LDG_SYNC') || 'auto';
+  if(syncLDG === 'auto'){
+    document.getElementById('M_LDG').value = M_auto.toFixed(1);
+    document.getElementById('M_LDG_SYNC').textContent = '🔗 auto';
+    document.getElementById('M_LDG_SYNC').className = 'sync-tag synced';
+  }
+  const M = v('M_LDG') || M_auto;
+
+  // Références auto
+  document.getElementById('OAT_LDG_REF').textContent = OAT.toFixed(1);
+  document.getElementById('ALT_LDG_REF').textContent = ALT0.toFixed(0);
+  document.getElementById('QNH_LDG_REF').textContent = QNH.toFixed(0);
+
+  const PA  = ALT0 + (1013 - QNH) * 30;
+  const ISA = 15 - 0.002 * PA;
+  const dT  = OAT - ISA;
+
+  const D_raw = interpLDG(LDG, M, PA, dT);
+  const D_vent = correcVent(D_raw, WFACE);
+  const D = Math.max(0, 5 * Math.floor(D_vent / 5 + 0.5));
+
+  // Comparatif béton / herbe (vent nul)
+  const D_beton_raw = interpLDG('beton', M, PA, dT);
+  const D_herbe_raw = interpLDG('herbe', M, PA, dT);
+  const D_beton = Math.max(0, 5 * Math.floor(correcVent(D_beton_raw, WFACE) / 5 + 0.5));
+  const D_herbe = Math.max(0, 5 * Math.floor(correcVent(D_herbe_raw, WFACE) / 5 + 0.5));
+
+  const labelLDG = (LDG === 'herbe') ? 'HERBE — SANS FREIN' : 'BÉTON — FREIN MODÉRÉ';
+  let cls = 'verdict-ok', msg = '✅ Distance normale';
+  if(D > 900){ cls = 'verdict-bad'; msg = '❌ Distance importante — vérifier piste'; }
+  else if(D > 700){ cls = 'verdict-warn'; msg = '⚠️ Distance significative — vigilance'; }
+
+  let warn = '';
+  if(M > M_MAX_LDG) warn += `<div class="banner-bad">❌ Masse > max atterrissage (${M_MAX_LDG} kg)</div>`;
+  if(M < 845)       warn += `<div class="banner-warn">⚠️ Masse sous la référence basse (845 kg)</div>`;
+  if(PA > 8000)     warn += `<div class="banner-warn">⚠️ PA hors domaine tableau (> 8000 ft)</div>`;
+
+  let html = warn;
+  html += `<div class="section-title">Conditions</div>`;
+  html += `<div class="kvline"><span class="k">Type de piste / freinage</span><span class="v ${LDG==='herbe'?'warn':'ok'}">${labelLDG}</span></div>`;
+  html += `<div class="kvline"><span class="k">Altitude-pression (PA)</span><span class="v">${PA.toFixed(0)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">Écart ISA</span><span class="v">${dT>=0?'+':''}${dT.toFixed(1)} °C</span></div>`;
+  html += `<div class="kvline"><span class="k">Vent de face</span><span class="v">${WFACE > 0 ? WFACE+' kt' : 'Nul'}</span></div>`;
+  if(WFACE > 0){
+    html += `<div class="kvline"><span class="k">Coef. correction vent</span><span class="v ok">×${(D_vent/Math.max(D_raw,1)).toFixed(2)}</span></div>`;
+  }
+  html += `<div class="verdict-box ${cls}">${msg}<span class="big">${D.toFixed(0)} m</span><span style="font-size:11px;opacity:0.8">Depuis passage 15 m → arrêt complet (${labelLDG.toLowerCase()})</span></div>`;
+  html += `<div class="section-title">Comparatif béton / herbe</div>`;
+  html += `<div class="kvline"><span class="k">Béton — frein modéré</span><span class="v">${D_beton.toFixed(0)} m</span></div>`;
+  html += `<div class="kvline"><span class="k">Herbe — sans frein</span><span class="v warn">${D_herbe.toFixed(0)} m</span></div>`;
+  html += `<div class="kvline"><span class="k">Surcoût herbe vs béton</span><span class="v warn">+${(D_herbe-D_beton).toFixed(0)} m</span></div>`;
+
+  document.getElementById('p8_out').innerHTML = html;
+}
+
+function calcAll(){
+  try {
+    calc1(); calc2(); calc3(); calc4(); calc5(); calc6(); calc7(); calc8();
+    saveAll();
+  } catch(e) { console.error(e); }
+}
+
+document.querySelectorAll('input').forEach(el => {
+  el.addEventListener('input', calcAll);
+  el.addEventListener('change', calcAll);
+});
+
+// Sync OAT onglet 4 ↔ onglet 7
+document.getElementById('OAT').addEventListener('input', () => {
+  if((localStorage.getItem('hrej_OAT_ICE_SYNC') || 'auto') === 'auto'){
+    document.getElementById('OAT_ICE').value = document.getElementById('OAT').value;
+  }
+});
+document.getElementById('OAT_ICE').addEventListener('input', () => {
+  if(document.getElementById('OAT_ICE').value !== document.getElementById('OAT').value){
+    localStorage.setItem('hrej_OAT_ICE_SYNC', 'manual');
+    updateOatSyncUI();
+  }
+});
+document.getElementById('btn_sync_oat').addEventListener('click', () => {
+  localStorage.setItem('hrej_OAT_ICE_SYNC', 'auto');
+  document.getElementById('OAT_ICE').value = document.getElementById('OAT').value;
+  updateOatSyncUI();
+  calcAll();
+});
+
+// Quand les données de vol changent : si M_LDG est en mode auto, recalculer
+document.getElementById('M_LDG').addEventListener('input', () => {
+  localStorage.setItem('hrej_M_LDG_SYNC', 'manual');
+  document.getElementById('M_LDG_SYNC').textContent = '✋ manuel';
+  document.getElementById('M_LDG_SYNC').className = 'sync-tag manual';
+});
+
+loadAll();
+calcAll();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>

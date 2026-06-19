@@ -1,0 +1,25 @@
+{
+  "name": "F-HREJ-Preflight",
+  "short_name": "F-HREJ",
+  "description": "Application de préparation de vol pour le DR400/160 F-HREJ — carburant, centrage, décollage, atterrissage, col, wave, givrage",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f1d35",
+  "theme_color": "#0f1d35",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
