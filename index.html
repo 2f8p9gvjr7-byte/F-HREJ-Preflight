@@ -153,13 +153,15 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
     <legend>⚖️ Masses</legend>
     <div class="row"><label>Masse à vide (MVIDE)</label><input id="MVIDE" type="number" step="0.1" value="621.3"><span class="unit">kg</span></div>
     <div class="row"><label>Masse pilote (MPIL)</label><input id="MPIL" type="number" step="1" value="80"><span class="unit">kg</span></div>
-    <div class="row"><label>Masse passager (MPAX)</label><input id="MPAX" type="number" step="1" value="0"><span class="unit">kg</span></div>
+    <div class="row"><label>Masse passager avant (MPAX_AV)</label><input id="MPAX_AV" type="number" step="1" value="0"><span class="unit">kg</span></div>
+    <div class="row"><label>Pax arrière gauche (MPAX_ARG)</label><input id="MPAX_ARG" type="number" step="1" value="0"><span class="unit">kg</span></div>
+    <div class="row"><label>Pax arrière droit (MPAX_ARD)</label><input id="MPAX_ARD" type="number" step="1" value="0"><span class="unit">kg</span></div>
     <div class="row"><label>Masse bagages (MBAG)</label><input id="MBAG" type="number" step="1" value="0"><span class="unit">kg</span></div>
   </fieldset>
   <button class="btn" onclick="calcAll()">Calculer centrage</button>
   <div id="p3_out" class="result"></div>
   <div class="notes">
-    <b>Bras de levier (mm) :</b> MVIDE = 316 | Pilote = 410 | Pax = 1190 | Bagages = 1900 | LFAV = 100 | LFAR = 1120<br>
+    <b>Bras de levier (mm) :</b> MVIDE = 316 | Pilote/Pax avant = 410 | Pax arrière (G/D) = 1190 | Bagages = 1900 | LFAV = 100 | LFAR = 1120<br>
     <b>Limites cat. N (formule HP-19) :</b><br>
     • Limite AV : 250 mm (≤ 650 kg) → 450 mm (≥ 950 kg) — interpolation 650-950 kg<br>
     • Limite AR : 400 mm (≤ 650 kg) → 550 mm (≥ 950 kg) — interpolation 650-950 kg<br>
@@ -317,7 +319,7 @@ const ARM = { vide: 316, pil: 410, pax: 1190, bag: 1900, lfav: 100, lfar: 1120 }
 
 const FIELDS = ['LFG','LFD','LFAR',
   'DIST','VGS','CONSO','CONSECO','MONTEE','DESCENTE','TAXI','MARGET',
-  'MVIDE','MPIL','MPAX','MBAG',
+  'MVIDE','MPIL','MPAX_AV','MPAX_ARG','MPAX_ARD','MBAG',
   'OAT','ALT0','QNH','SLOPE',
   'ALTCOL','DIST_COL','VIAS','CAP','TLEV','ZLEV','WDIR','WSPD','CHAIN',
   'RH','TDEW0','RPM','OAT_ICE','WFACE','M_LDG'];
@@ -467,11 +469,15 @@ function calc2(){
 function calc3(){
   const c1 = calc1();
   const c2 = calc2();
-  const MVIDE = v('MVIDE'), MPIL = v('MPIL'), MPAX = v('MPAX'), MBAG = v('MBAG');
+  const MVIDE = v('MVIDE'), MPIL = v('MPIL');
+  const MPAX_AV = v('MPAX_AV'), MPAX_ARG = v('MPAX_ARG'), MPAX_ARD = v('MPAX_ARD');
+  const MBAG = v('MBAG');
+  const MPAX = MPAX_AV + MPAX_ARG + MPAX_ARD; // total pour info / appoint
   const mFuelLFAV = c1.LFAV * DENS;
   const mFuelLFAR = c1.LFAR * DENS;
-  const M = MVIDE + MPIL + MPAX + MBAG + mFuelLFAV + mFuelLFAR;
-  const moment = MVIDE * ARM.vide + MPIL * ARM.pil + MPAX * ARM.pax + MBAG * ARM.bag
+  const M = MVIDE + MPIL + MPAX_AV + MPAX_ARG + MPAX_ARD + MBAG + mFuelLFAV + mFuelLFAR;
+  const moment = MVIDE * ARM.vide + MPIL * ARM.pil + MPAX_AV * ARM.pil
+               + MPAX_ARG * ARM.pax + MPAX_ARD * ARM.pax + MBAG * ARM.bag
                + mFuelLFAV * ARM.lfav + mFuelLFAR * ARM.lfar;
   const CG = moment / Math.max(M, 0.001);
 
