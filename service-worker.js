@@ -1,7 +1,7 @@
 // Service worker — DR400/160 F-HREJ Prévol
 // Permet le fonctionnement complet hors connexion après la première visite.
 
-const CACHE_NAME = 'fhrej-prevol-v1';
+const CACHE_NAME = 'fhrej-prevol-v4';
 const FILES_TO_CACHE = [
   './index.html',
   './manifest.json',

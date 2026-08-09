@@ -202,7 +202,16 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
     <div class="row"><label>Altitude terrain (auto)</label><span class="ref" id="ALTDEP_REF">—</span><span class="unit">ft</span></div>
     <div class="row"><label>Altitude col (ALTcol)</label><input id="ALTCOL" type="number" step="50" value="4100"><span class="unit">ft</span></div>
     <div class="row"><label>Distance terrain→col</label><input id="DIST_COL" type="number" step="1" value="8"><span class="unit">NM</span></div>
-    <div class="row"><label>Vitesse indiquée (VIAS)</label><input id="VIAS" type="number" step="1" value="80"><span class="unit">kt</span></div>
+    <div class="row">
+      <label>Type de montée</label>
+      <select id="VTYPE" style="width:85px;background:#0a1628;border:1px solid var(--border-2);border-radius:6px;color:var(--val);padding:6px 4px;font-size:12px;font-weight:600;text-align:right;" onchange="syncVIAS();calcAll()">
+        <option value="86">Vy 86 kt</option>
+        <option value="70">Vx 70 kt</option>
+        <option value="0">Autre →</option>
+      </select>
+      <span class="unit"></span>
+    </div>
+    <div class="row"><label>Vitesse indiquée (VIAS) <span id="VIAS_NOTE" style="font-size:10px;color:var(--text-dim)">lisse</span></label><input id="VIAS" type="number" step="1" value="86"><span class="unit">kt</span></div>
     <div class="row"><label>Cap magnétique (CAP)</label><input id="CAP" type="number" step="1" value="130"><span class="unit">°</span></div>
   </fieldset>
   <fieldset>
@@ -221,6 +230,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
     • PALEV = ZLEV + (1013 − QNH) × 27 (HP-19)<br>
     • Intégration Simpson : (VSDEP + 4×VSmid + VSCOL) / 6<br>
     • Marge recommandée ≥ 1000 ft (CAA SS35)<br>
+    • <b>DR400/160 :</b> Vy = 160 km/h = 86 kt (lisse) | Vx = 130 km/h = 70 kt (volets 1er cran)<br>
     • Réglementation O₂ : > 10000 ft équipage si > 30 min | > 13000 ft tous (NCO.OP.190)
   </div>
 </div>
@@ -321,8 +331,25 @@ const FIELDS = ['LFG','LFD','LFAR',
   'DIST','VGS','CONSO','CONSECO','MONTEE','DESCENTE','TAXI','MARGET',
   'MVIDE','MPIL','MPAX_AV','MPAX_ARG','MPAX_ARD','MBAG',
   'OAT','ALT0','QNH','SLOPE',
-  'ALTCOL','DIST_COL','VIAS','CAP','TLEV','ZLEV','WDIR','WSPD','CHAIN',
+  'ALTCOL','DIST_COL','VIAS','VTYPE','CAP','TLEV','ZLEV','WDIR','WSPD','CHAIN',
   'RH','TDEW0','RPM','OAT_ICE','WFACE','M_LDG'];
+
+function syncVIAS(){
+  const vt = document.getElementById('VTYPE');
+  const vias = document.getElementById('VIAS');
+  const note = document.getElementById('VIAS_NOTE');
+  if(!vt || !vias) return;
+  if(vt.value === '0'){
+    vias.value = '';
+    vias.readOnly = false;
+    note.textContent = 'saisie libre';
+    vias.focus();
+  } else {
+    vias.value = vt.value;
+    vias.readOnly = false;
+    note.textContent = vt.value === '86' ? 'lisse — Vy' : 'volets 1er cran — Vx';
+  }
+}
 
 function saveAll(){
   FIELDS.forEach(id => {
@@ -335,6 +362,8 @@ function saveAll(){
   if(ice) localStorage.setItem('hrej_ICEMODE', ice.value);
   const ldg = document.querySelector('input[name="LDG"]:checked');
   if(ldg) localStorage.setItem('hrej_LDG', ldg.value);
+  const vtype = document.getElementById('VTYPE');
+  if(vtype) localStorage.setItem('hrej_VTYPE', vtype.value);
 }
 
 function loadAll(){
@@ -350,6 +379,8 @@ function loadAll(){
   if(ice){ const el = document.querySelector(`input[name="ICEMODE"][value="${ice}"]`); if(el) el.checked = true; }
   const ldg = localStorage.getItem('hrej_LDG');
   if(ldg){ const el = document.querySelector(`input[name="LDG"][value="${ldg}"]`); if(el) el.checked = true; }
+  const vtype = localStorage.getItem('hrej_VTYPE');
+  if(vtype){ const el = document.getElementById('VTYPE'); if(el){ el.value = vtype; syncVIAS(); } }
   if(localStorage.getItem('hrej_OAT_ICE_SYNC') === null) localStorage.setItem('hrej_OAT_ICE_SYNC', 'auto');
   if(localStorage.getItem('hrej_OAT_ICE_SYNC') === 'auto'){
     const oat4 = document.getElementById('OAT');
