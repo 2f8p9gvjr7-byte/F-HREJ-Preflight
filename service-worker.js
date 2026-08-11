@@ -1,7 +1,7 @@
 // Service worker — DR400/160 F-HREJ Prévol
-// Permet le fonctionnement complet hors connexion après la première visite.
+// Fonctionnement hors-ligne après la première visite.
 
-const CACHE_NAME = 'fhrej-prevol-v4';
+const CACHE_NAME = 'fhrej-prevol-v7';
 const FILES_TO_CACHE = [
   './index.html',
   './manifest.json',
@@ -9,7 +9,7 @@ const FILES_TO_CACHE = [
   './icon-512.png'
 ];
 
-// Installation : mise en cache de tous les fichiers de l'app
+// Installation : mise en cache
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(FILES_TO_CACHE))
@@ -17,7 +17,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activation : nettoyage des anciens caches si nouvelle version
+// Activation : suppression des anciens caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -29,16 +29,20 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Stratégie : cache d'abord, réseau en secours (cache-first)
-// Garantit que l'app s'ouvre instantanément même sans réseau.
+// Stratégie : réseau d'abord, cache en secours (network-first)
+// Garantit que Vercel sert toujours la dernière version quand on est en ligne
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).catch(() => {
-        // Si hors-ligne et fichier non caché, retombe sur index.html
-        return caches.match('./index.html');
-      });
-    })
+    fetch(event.request)
+      .then((response) => {
+        // Mettre à jour le cache avec la réponse réseau
+        const responseClone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+        return response;
+      })
+      .catch(() => {
+        // Hors ligne : servir depuis le cache
+        return caches.match(event.request).then((cached) => cached || caches.match('./index.html'));
+      })
   );
 });

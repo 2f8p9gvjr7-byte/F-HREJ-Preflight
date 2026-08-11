@@ -104,6 +104,8 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   <div class="tab" data-page="p6">6·Wave</div>
   <div class="tab" data-page="p7">7·Givrage</div>
   <div class="tab" data-page="p8">8·Atterrissage</div>
+  <div class="tab" data-page="p9">9·Zv</div>
+  <div class="tab" data-page="p10">10·Thermique</div>
 </div>
 
 <!-- ONGLET 1 : Carburant -->
@@ -320,6 +322,50 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   </div>
 </div>
 
+<!-- ONGLET 9 : Altitude vraie (Zv) -->
+<div id="p9" class="page">
+  <fieldset>
+    <legend>🔭 Conditions</legend>
+    <div class="row"><label>OAT sol (auto onglet 4)</label><span class="ref" id="OAT_ZV_REF">—</span><span class="unit">°C</span></div>
+    <div class="row"><label>QNH (auto onglet 4)</label><span class="ref" id="QNH_ZV_REF">—</span><span class="unit">hPa</span></div>
+    <div class="row"><label>Altitude terrain départ (auto onglet 4)</label><span class="ref" id="ALT_ZV_REF">—</span><span class="unit">ft</span></div>
+  </fieldset>
+  <fieldset>
+    <legend>✏️ Saisie</legend>
+    <div class="row"><label>Altitude QNH affichée (Zi)</label><input id="ZI" type="number" step="50" value="3500"><span class="unit">ft</span></div>
+    <div class="row"><label>Altitude obstacle / relief (Zobs)</label><input id="ZOBS" type="number" step="50" value="2497"><span class="unit">ft</span></div>
+  </fieldset>
+  <button class="btn" onclick="calcAll()">Calculer altitude vraie</button>
+  <div id="p9_out" class="result"></div>
+  <div class="notes">
+    <b>Formule :</b> Zv = Zi × (1 + 0,04 × ΔT_ISA / 10) avec ΔT_ISA = OAT sol − 15°C<br>
+    • Approximation standard valable jusqu'à ~10 000 ft<br>
+    • Par temps chaud, Zv &gt; Zi : l'avion vole <b>plus haut</b> que l'altimètre n'indique<br>
+    • La marge réelle sol = Zv − altitude terrain (pas Zi − terrain)<br>
+    • La marge réelle obstacle = Zv − Zobs<br>
+    • <b>Usage non certifié — vérifier avec les abaques officiels</b>
+  </div>
+</div>
+
+<!-- ONGLET 10 : Risque thermique pilote (tableau FFA) -->
+<div id="p10" class="page">
+  <fieldset>
+    <legend>🌡️ Conditions</legend>
+    <div class="row"><label>OAT — Température extérieure (auto onglet 4)</label><span class="ref" id="OAT_TH_REF">—</span><span class="unit">°C</span></div>
+    <div class="row"><label>Humidité relative RH (auto onglet 7)</label><span class="ref" id="RH_TH_REF">—</span><span class="unit">%</span></div>
+  </fieldset>
+  <button class="btn" onclick="calcAll()">Évaluer risque thermique</button>
+  <div id="p10_out" class="result"></div>
+  <div class="notes">
+    <b>Source :</b> Diagramme FFA / Armée de l'Air — Aviation et Pilote n°631 Août 2026<br>
+    • Axes : Température de l'air (°C) × Humidité relative (%)<br>
+    • <span style="color:#4ade80">■ Vert</span> : faible danger — aucune précaution particulière<br>
+    • <span style="color:#fbbf24">■ Jaune</span> : danger possible — hydratation, ventilation, repos<br>
+    • <span style="color:#f97316">■ Orange</span> : danger significatif — 2 vols max/24h, repos 4h avant<br>
+    • <span style="color:#f87171">■ Rouge</span> : danger élevé — avion sous abri, attente limitée, aucun autre vol 24h
+  </div>
+</div>
+
 <script>
 const DENS = 0.72;
 const LFG_MAX = 40, LFD_MAX = 40, LFAR_MAX = 110;
@@ -332,7 +378,7 @@ const FIELDS = ['LFG','LFD','LFAR',
   'MVIDE','MPIL','MPAX_AV','MPAX_ARG','MPAX_ARD','MBAG',
   'OAT','ALT0','QNH','SLOPE',
   'ALTCOL','DIST_COL','VIAS','VTYPE','CAP','TLEV','ZLEV','WDIR','WSPD','CHAIN',
-  'RH','TDEW0','RPM','OAT_ICE','WFACE','M_LDG'];
+  'RH','TDEW0','RPM','OAT_ICE','WFACE','M_LDG','ZI','ZOBS'];
 
 function syncVIAS(){
   const vt = document.getElementById('VTYPE');
@@ -981,9 +1027,157 @@ function calc8(){
   document.getElementById('p8_out').innerHTML = html;
 }
 
+// ============================================================
+// ONGLET 9 — Altitude vraie (Zv)
+// Zv = Zi × (1 + 0,04 × ΔT_ISA / 10)
+// ΔT_ISA = OAT sol − 15°C
+// ============================================================
+function calc9(){
+  const OAT  = v('OAT');
+  const QNH  = v('QNH');
+  const ALT0 = v('ALT0');
+  const ZI   = v('ZI');
+  const ZOBS = v('ZOBS');
+
+  document.getElementById('OAT_ZV_REF').textContent = OAT.toFixed(1);
+  document.getElementById('QNH_ZV_REF').textContent  = QNH.toFixed(0);
+  document.getElementById('ALT_ZV_REF').textContent  = ALT0.toFixed(0);
+
+  const dT_ISA = OAT - 15;
+  const Zv = ZI * (1 + 0.04 * dT_ISA / 10);
+  const PA = ZI + (1013 - QNH) * 30;  // altitude-pression à Zi
+  const ISA_loc = 15 - 0.002 * PA;
+  const dT_loc  = OAT - ISA_loc;      // écart ISA local à l'altitude de vol
+  const Zv_loc  = ZI * (1 + 0.04 * dT_loc / 10); // version plus précise
+
+  const marge_sol = Zv_loc - ALT0;
+  const marge_obs = Zv_loc - ZOBS;
+
+  let cls_sol  = marge_sol > 1000 ? 'ok' : marge_sol > 500 ? 'warn' : 'bad';
+  let cls_obs  = marge_obs > 1000 ? 'ok' : marge_obs > 300  ? 'warn' : 'bad';
+
+  let html = '';
+  html += `<div class="section-title">Calculs</div>`;
+  html += `<div class="kvline"><span class="k">Écart ISA sol (OAT − 15°C)</span><span class="v">${dT_ISA >= 0 ? '+' : ''}${dT_ISA.toFixed(1)} °C</span></div>`;
+  html += `<div class="kvline"><span class="k">Altitude-pression (PA à Zi)</span><span class="v">${PA.toFixed(0)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">Écart ISA local (à l'altitude)</span><span class="v">${dT_loc >= 0 ? '+' : ''}${dT_loc.toFixed(1)} °C</span></div>`;
+  html += `<div class="kvline"><span class="k">Correction Zv</span><span class="v">+${(Zv_loc - ZI).toFixed(0)} ft</span></div>`;
+
+  html += `<div class="section-title">Résultats</div>`;
+  html += `<div class="kvline"><span class="k">Altitude affichée (Zi)</span><span class="v">${ZI.toFixed(0)} ft QNH</span></div>`;
+  html += `<div class="kvline"><span class="k">Altitude vraie (Zv)</span><span class="v" style="font-size:16px">${Zv_loc.toFixed(0)} ft</span></div>`;
+
+  html += `<div class="section-title">Marges réelles</div>`;
+  html += `<div class="kvline"><span class="k">Marge / terrain départ (${ALT0.toFixed(0)} ft)</span><span class="v ${cls_sol}">${marge_sol.toFixed(0)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">Marge / obstacle saisi (${ZOBS.toFixed(0)} ft)</span><span class="v ${cls_obs}">${marge_obs.toFixed(0)} ft</span></div>`;
+
+  // Verdict global marge obstacle
+  let verdict, vClass;
+  if(marge_obs < 0)    { verdict = '❌ EN DESSOUS DE L\'OBSTACLE'; vClass = 'verdict-bad'; }
+  else if(marge_obs < 300) { verdict = '❌ Marge insuffisante'; vClass = 'verdict-bad'; }
+  else if(marge_obs < 500) { verdict = '⚠️ Marge faible — vigilance'; vClass = 'verdict-warn'; }
+  else                     { verdict = '✅ Marge correcte'; vClass = 'verdict-ok'; }
+
+  html += `<div class="verdict-box ${vClass}">${verdict}<span class="big">${marge_obs.toFixed(0)} ft</span><span style="font-size:11px;opacity:0.8">au-dessus de l'obstacle (Zv réelle)</span></div>`;
+
+  // Rappel si ISA+ significatif
+  if(dT_ISA >= 15){
+    html += `<div class="banner-warn" style="margin-top:8px">⚠️ ISA +${dT_ISA.toFixed(0)}°C — écart important. La marge réelle est significativement réduite par rapport à l'altimètre.</div>`;
+  }
+
+  document.getElementById('p9_out').innerHTML = html;
+}
+
+// ============================================================
+// ONGLET 10 — Risque thermique pilote (tableau FFA)
+// Source : Aviation et Pilote n°631 Août 2026 / Armée de l'Air
+// ============================================================
+function calc10(){
+  const OAT = v('OAT');
+  const RH  = v('RH');
+
+  document.getElementById('OAT_TH_REF').textContent = OAT.toFixed(1);
+  document.getElementById('RH_TH_REF').textContent  = RH.toFixed(0);
+
+  // Tableau FFA — frontières lues sur le diagramme
+  // zone(OAT, RH) → 4=Rouge, 3=Orange, 2=Jaune, 1=Vert
+  function zone(oat, rh){
+    const t = Math.round(oat);
+    // Rouge
+    if(t >= 45)                         return 4;
+    if(t >= 43 && rh >= 20)             return 4;
+    if(t === 42 && rh >= 20)            return 4;
+    if(t === 41 && rh >= 30)            return 4;
+    if(t === 40 && rh >= 40)            return 4;
+    if(t === 39 && rh >= 50)            return 4;
+    if(t === 38 && rh >= 50)            return 4;
+    if(t === 37 && rh >= 60)            return 4;
+    if(t === 36 && rh >= 70)            return 4;
+    if(t === 35 && rh >= 80)            return 4;
+    // Orange
+    if(t >= 43 && rh >= 10)             return 3;
+    if(t >= 41 && rh >= 10)             return 3;
+    if(t === 40 && rh >= 10)            return 3;
+    if(t === 39 && rh >= 20)            return 3;
+    if(t === 38 && rh >= 30)            return 3;
+    if(t === 37 && rh >= 30)            return 3;
+    if(t === 36 && rh >= 40)            return 3;
+    if(t === 35 && rh >= 50)            return 3;
+    if(t === 34 && rh >= 60)            return 3;
+    if(t === 33 && rh >= 70)            return 3;
+    if(t === 32 && rh >= 80)            return 3;
+    if(t === 31 && rh >= 90)            return 3;
+    // Jaune
+    if(t >= 35 && rh >= 10)             return 2;
+    if(t >= 31 && rh >= 20)             return 2;
+    if(t === 30 && rh >= 30)            return 2;
+    if(t === 29 && rh >= 50)            return 2;
+    if(t === 28 && rh >= 60)            return 2;
+    if(t === 27 && rh >= 70)            return 2;
+    if(t === 26 && rh >= 80)            return 2;
+    if(t === 25 && rh >= 90)            return 2;
+    // Vert
+    return 1;
+  }
+
+  const z = zone(OAT, RH);
+
+  const labels = ['', '🟢 VERT — Faible danger', '🟡 JAUNE — Danger possible', '🟠 ORANGE — Danger significatif', '🔴 ROUGE — Danger élevé'];
+  const classes = ['', 'verdict-ok', 'verdict-warn', 'verdict-warn', 'verdict-bad'];
+  const colors  = ['', '#4ade80', '#fbbf24', '#f97316', '#f87171'];
+
+  const conseils = [
+    '',
+    'Aucune précaution particulière à prévoir. Maintenir une bonne hydratation de base.',
+    'Coup de chaleur possible mais exceptionnel.\n• Ventilation cabine conseillée à l\'attente\n• Plusieurs vols possibles avec repos suffisant\n• Prévoir de quoi s\'hydrater pendant le vol',
+    'Risque de coup de chaleur significatif.\n• Stationnement prolongé sous abri\n• Réduire l\'attente au départ\n• 2 vols max par 24h avec repos obligatoire entre les deux\n• Repos de 4h avant vol\n• Forte hydratation avant, pendant et après',
+    'Danger élevé — mesures strictes obligatoires.\n• Avion obligatoirement sous abri (si disponible)\n• Attente au départ limitée au strict nécessaire\n• Si fin de vol en zone rouge : aucun autre vol dans les 24h\n• Absence totale d\'activité physique avant le vol\n• Très forte hydratation avant, pendant et après\n• Risque très important de coup de chaleur'
+  ];
+
+  let html = '';
+  html += `<div class="section-title">Paramètres</div>`;
+  html += `<div class="kvline"><span class="k">Température OAT</span><span class="v">${OAT.toFixed(1)} °C</span></div>`;
+  html += `<div class="kvline"><span class="k">Humidité relative RH</span><span class="v">${RH.toFixed(0)} %</span></div>`;
+
+  html += `<div class="verdict-box ${classes[z]}" style="border-color:${colors[z]};color:${colors[z]}">`;
+  html += `${labels[z]}</div>`;
+
+  html += `<div class="section-title">Recommandations</div>`;
+  const lignes = conseils[z].split('\n');
+  lignes.forEach(l => {
+    if(l.startsWith('•')){
+      html += `<div class="kvline"><span class="k" style="color:var(--text)">${l}</span></div>`;
+    } else if(l){
+      html += `<div class="section-title" style="color:var(--text-dim);font-size:10px">${l}</div>`;
+    }
+  });
+
+  document.getElementById('p10_out').innerHTML = html;
+}
+
 function calcAll(){
   try {
-    calc1(); calc2(); calc3(); calc4(); calc5(); calc6(); calc7(); calc8();
+    calc1(); calc2(); calc3(); calc4(); calc5(); calc6(); calc7(); calc8(); calc9(); calc10();
     saveAll();
   } catch(e) { console.error(e); }
 }
