@@ -203,6 +203,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
     <legend>🏔 Terrain & navigation</legend>
     <div class="row"><label>Altitude terrain (auto)</label><span class="ref" id="ALTDEP_REF">—</span><span class="unit">ft</span></div>
     <div class="row"><label>Altitude col (ALTcol)</label><input id="ALTCOL" type="number" step="50" value="4100"><span class="unit">ft</span></div>
+    <div class="row"><label>Marge minimum souhaitée</label><input id="MARGE_MIN" type="number" step="50" value="1000"><span class="unit">ft</span></div>
     <div class="row"><label>Distance terrain→col</label><input id="DIST_COL" type="number" step="1" value="8"><span class="unit">NM</span></div>
     <div class="row">
       <label>Type de montée</label>
@@ -231,7 +232,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   <div class="notes">
     • PALEV = ZLEV + (1013 − QNH) × 27 (HP-19)<br>
     • Intégration Simpson : (VSDEP + 4×VSmid + VSCOL) / 6<br>
-    • Marge recommandée ≥ 1000 ft (CAA SS35)<br>
+    • Marge minimum modifiable (défaut 1000 ft — recommandation CAA SS35, non réglementaire)<br>
     • <b>DR400/160 :</b> Vy = 160 km/h = 86 kt (lisse) | Vx = 130 km/h = 70 kt (volets 1er cran)<br>
     • Réglementation O₂ : > 10000 ft équipage si > 30 min | > 13000 ft tous (NCO.OP.190)
   </div>
@@ -377,7 +378,7 @@ const FIELDS = ['LFG','LFD','LFAR',
   'DIST','VGS','CONSO','CONSECO','MONTEE','DESCENTE','TAXI','MARGET',
   'MVIDE','MPIL','MPAX_AV','MPAX_ARG','MPAX_ARD','MBAG',
   'OAT','ALT0','QNH','SLOPE',
-  'ALTCOL','DIST_COL','VIAS','VTYPE','CAP','TLEV','ZLEV','WDIR','WSPD','CHAIN',
+  'ALTCOL','DIST_COL','VIAS','VTYPE','CAP','TLEV','ZLEV','WDIR','WSPD','CHAIN','MARGE_MIN',
   'RH','TDEW0','RPM','OAT_ICE','WFACE','M_LDG','ZI','ZOBS'];
 
 function syncVIAS(){
@@ -685,6 +686,7 @@ function calc5(){
   const ALTCOL = v('ALTCOL'), DIST = v('DIST_COL'), VIAS = v('VIAS'), CAP = v('CAP');
   const TLEV = v('TLEV'), ZLEV = v('ZLEV');
   const M = c3.M, WDIR = v('WDIR'), WSPD = v('WSPD');
+  const MARGE_MIN = v('MARGE_MIN') || 1000;
   document.getElementById('ALTDEP_REF').textContent = ALT0.toFixed(0);
   document.getElementById('QNH_REF').textContent = QNH.toFixed(0);
   document.getElementById('OATDEP_REF').textContent = OAT.toFixed(1);
@@ -718,10 +720,10 @@ function calc5(){
   const tempsMin = (60 * DIST) / Math.max(Vsol, 0.001);
   const vzMoy = (VSDEP + 4 * VSmid + VSCOL) / 6;
   const MARGE = tempsMin * vzMoy - (ALTCOL - ALT0);
-  let cls = 'verdict-ok', msg = '✅ Marge confortable (≥ 1000 ft)';
+  let cls = 'verdict-ok', msg = `✅ Marge confortable (≥ ${MARGE_MIN} ft)`;
   if(MARGE < 0){ cls = 'verdict-bad'; msg = '❌ FRANCHISSEMENT IMPOSSIBLE'; }
-  else if(MARGE < 500){ cls = 'verdict-bad'; msg = '❌ Marge insuffisante'; }
-  else if(MARGE < 1000){ cls = 'verdict-warn'; msg = '⚠️ Marge faible — prudence'; }
+  else if(MARGE < MARGE_MIN * 0.5){ cls = 'verdict-bad'; msg = '❌ Marge insuffisante'; }
+  else if(MARGE < MARGE_MIN){ cls = 'verdict-warn'; msg = `⚠️ Marge faible — objectif ${MARGE_MIN} ft`; }
   let html = '';
   html += `<div class="section-title">Calculs intermédiaires</div>`;
   html += `<div class="kvline"><span class="k">PA départ</span><span class="v">${PAdep.toFixed(0)} ft</span></div>`;
