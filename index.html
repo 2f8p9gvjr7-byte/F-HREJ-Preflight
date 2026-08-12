@@ -369,21 +369,29 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   <div id="zv_manuel" class="hidden">
     <fieldset>
       <legend>✏️ Saisie manuelle</legend>
+      <div class="row">
+        <label>Mode calage altimétrique</label>
+        <label style="margin-right:12px"><input type="radio" name="ZV_CALAGE" value="qnh" checked onchange="toggleCalage()"> Altitude (QNH)</label>
+        <label><input type="radio" name="ZV_CALAGE" value="fl" onchange="toggleCalage()"> Niveau de vol (FL / 1013)</label>
+      </div>
       <div class="row"><label>OAT à l'altitude de vol</label><input id="OAT_ZV_MAN" type="number" step="1" value="25"><span class="unit">°C</span></div>
-      <div class="row"><label>QNH</label><input id="QNH_ZV_MAN" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
-      <div class="row"><label>Altitude affichée (Zi)</label><input id="ZI_MAN" type="number" step="50" value="3500"><span class="unit">ft</span></div>
-      <div class="row"><label>Altitude obstacle / référence (Zobs)</label><input id="ZOBS_MAN" type="number" step="50" value="2497"><span class="unit">ft</span></div>
+      <div class="row" id="row_qnh_man"><label>QNH</label><input id="QNH_ZV_MAN" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
+      <div class="row" id="row_fl_man" style="display:none"><label>Niveau de vol (FL)</label><input id="FL_MAN" type="number" step="5" value="65" min="10" max="195"><span class="unit">× 100 ft</span></div>
+      <div class="row" id="row_qnh_fl_man" style="display:none"><label>QNH du jour</label><input id="QNH_FL_MAN" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
+      <div class="row" id="row_zi_man"><label id="label_zi_man">Altitude affichée (Zi)</label><input id="ZI_MAN" type="number" step="50" value="3500"><span class="unit" id="unit_zi_man">ft</span></div>
+      <div class="row"><label>Altitude du sommet / obstacle (MSL)</label><input id="ZOBS_MAN" type="number" step="50" value="2497"><span class="unit">ft MSL</span></div>
     </fieldset>
     <div class="notes">
-      Utiliser pour : franchissement de col, obstacle isolé, ou toute altitude MSL.<br>
-      <b>Zi</b> = altitude affichée à l'altimètre | <b>Zobs</b> = altitude réelle de l'obstacle.
+      Utiliser pour : survol d'un sommet ou massif montagneux, obstacle isolé, franchissement de col.<br>
+      Saisir l'altitude affichée à l'altimètre (Zi) et l'altitude MSL du sommet à franchir (carte IGN / SIA).<br>
+      <b>Mode FL</b> : calage 1013 hPa — en hiver par temps froid, Zv &lt; FL affiché (l'avion vole plus bas que l'altimètre n'indique).
     </div>
     <button class="btn" onclick="calcAll()">Calculer altitude vraie</button>
     <div id="p9_out_manuel" class="result"></div>
   </div>
 
   <div class="notes">
-    <b>Formule :</b> Zv = Zi × (1 + 0,04 × ΔT_ISA_local / 10)<br>
+    <b>Formule :</b> PA = Zi + (1013 − QNH) × 27 · Zv = Zi + 4 × (PA/1000) × ΔT_ISA_local<br>
     • Par temps chaud, Zv &gt; Zi : l'avion vole <b>plus haut</b> que l'altimètre n'indique<br>
     • La marge réelle = Zv − Zobs (pas Zi − Zobs)<br>
     • <b>Usage non certifié — vérifier avec les abaques officiels</b>
@@ -434,7 +442,7 @@ const FIELDS = ['LFG','LFD','LFAR',
   'OAT','ALT0','QNH','SLOPE',
   'ALTCOL','ALTCOL_PROG','DIST_COL','VIAS','VTYPE','CAP','TLEV','ZLEV','WDIR','WSPD','CHAIN','MARGE_MIN',
   'RH','TDEW0','RPM','OAT_ICE','WFACE','M_LDG',
-  'ZTERRAIN','ZI_RTBA','ZI_RTBA_AGL','QNH_RTBA','OAT_RTBA','MARGE_RTBA','OAT_ZV_MAN','QNH_ZV_MAN','ZI_MAN','ZOBS_MAN',
+  'ZTERRAIN','ZI_RTBA','ZI_RTBA_AGL','QNH_RTBA','OAT_RTBA','MARGE_RTBA','OAT_ZV_MAN','QNH_ZV_MAN','ZI_MAN','FL_MAN','QNH_FL_MAN','ZOBS_MAN',
   'OAT_TH','RH_TH','LF_LDG'];
 
 function syncVIAS(){
@@ -1104,6 +1112,14 @@ function calc8(){
 // ============================================================
 // ONGLET 9 — Altitude vraie (Zv) — 3 modes
 // ============================================================
+function toggleCalage(){
+  const isFL = document.querySelector('input[name="ZV_CALAGE"]:checked')?.value === 'fl';
+  document.getElementById('row_qnh_man').style.display    = isFL ? 'none' : '';
+  document.getElementById('row_fl_man').style.display     = isFL ? '' : 'none';
+  document.getElementById('row_qnh_fl_man').style.display = isFL ? '' : 'none';
+  document.getElementById('row_zi_man').style.display     = isFL ? 'none' : '';
+  calcAll();
+}
 function updateZvModeUI(){
   const mode = document.querySelector('input[name="ZV_MODE"]:checked');
   const m = mode ? mode.value : 'rtba';
@@ -1178,12 +1194,54 @@ function calc9(){
     return;
   } else {
     OAT  = v('OAT_ZV_MAN');
+    Zobs = v('ZOBS_MAN');
+    const isFL = document.querySelector('input[name="ZV_CALAGE"]:checked')?.value === 'fl';
+    if(isFL){
+      const FL   = v('FL_MAN');
+      const qnhFL = v('QNH_FL_MAN');
+      const altFL = FL * 100;                      // altitude affichée FL (calage 1013)
+      Zi   = altFL - (1013 - qnhFL) * 27;         // altitude QNH réelle (position vraie / relief)
+      QNH  = qnhFL;                                // pour affichage seulement
+      // PA reste basé sur FL×100 (calage 1013, donc PA = Zi_FL)
+      const PA_fl   = altFL;
+      const ISA_fl  = 15 - 0.002 * PA_fl;
+      const dT_fl   = OAT - ISA_fl;
+      const corr_fl = 4 * (PA_fl / 1000) * dT_fl;
+      const Zv_fl   = Zi + corr_fl;
+      const marge_fl = Zv_fl - Zobs;
+
+      let verdict, vClass;
+      if(marge_fl < 0)        { verdict = '❌ EN DESSOUS DE LA RÉFÉRENCE'; vClass = 'verdict-bad'; }
+      else if(marge_fl < 200) { verdict = '❌ Marge insuffisante';         vClass = 'verdict-bad'; }
+      else if(marge_fl < 500) { verdict = '⚠️ Marge faible — vigilance';  vClass = 'verdict-warn'; }
+      else                    { verdict = '✅ Marge correcte';             vClass = 'verdict-ok'; }
+
+      let html = '';
+      html += `<div class="section-title">Calculs</div>`;
+      html += `<div class="kvline"><span class="k">FL affiché × 100</span><span class="v">${altFL.toFixed(0)} ft (calage 1013)</span></div>`;
+      html += `<div class="kvline"><span class="k">Correction QNH (${qnhFL} hPa)</span><span class="v">${((1013-qnhFL)*27>=0?'−':'+')}${Math.abs((1013-qnhFL)*27).toFixed(0)} ft</span></div>`;
+      html += `<div class="kvline"><span class="k">Altitude QNH réelle</span><span class="v">${Zi.toFixed(0)} ft QNH</span></div>`;
+      html += `<div class="kvline"><span class="k">Température ISA à FL${FL.toFixed(0)}</span><span class="v">${ISA_fl.toFixed(1)} °C</span></div>`;
+      html += `<div class="kvline"><span class="k">Écart ISA local</span><span class="v">${dT_fl>=0?'+':''}${dT_fl.toFixed(1)} °C</span></div>`;
+      html += `<div class="kvline"><span class="k">Correction thermique</span><span class="v ${corr_fl>=0?'warn':'ok'}">${corr_fl>=0?'+':''}${corr_fl.toFixed(0)} ft</span></div>`;
+      html += `<div class="section-title">Résultats</div>`;
+      html += `<div class="kvline"><span class="k">Altitude vraie au franchissement (Zv)</span><span class="v" style="font-size:20px;font-weight:700;color:${corr_fl<0?'#f4c430':'#7fff7f'}">${Zv_fl.toFixed(0)} ft</span></div>`;
+      html += `<div class="kvline"><span class="k">Altitude du sommet / obstacle</span><span class="v">${Zobs.toFixed(0)} ft MSL</span></div>`;
+      if(Zv_fl < Zobs){
+        html += `<div class="banner-warn" style="margin-top:4px">⚠️ Zv (${Zv_fl.toFixed(0)} ft) &lt; obstacle (${Zobs.toFixed(0)} ft) — l'avion passe <b>en dessous</b> du sommet !</div>`;
+      }
+      html += `<div class="section-title">Marge réelle</div>`;
+      html += `<div class="verdict-box ${vClass}">${verdict}<span class="big">${marge_fl.toFixed(0)} ft</span><span style="font-size:11px;opacity:0.8">Zv − altitude obstacle</span></div>`;
+      if(dT_fl <= -10){
+        html += `<div class="banner-warn" style="margin-top:8px">⚠️ Temps très froid (${dT_fl.toFixed(0)}°C / ISA) — correction importante, l'avion vole significativement plus bas que le FL affiché.</div>`;
+      }
+      ['p9_out_rtba','p9_out_manuel'].forEach(id => document.getElementById(id).innerHTML = '');
+      document.getElementById('p9_out_manuel').innerHTML = html;
+      return;
+    }
+    // Mode QNH standard
     QNH  = v('QNH_ZV_MAN');
     Zi   = v('ZI_MAN');
-    Zobs = v('ZOBS_MAN');
-    label_zi    = 'Altitude affichée (Zi)';
-    label_zobs  = 'Altitude obstacle / référence';
-    label_marge = 'Marge réelle / obstacle';
   }
 
   const PA      = Zi + (1013 - QNH) * 27;
@@ -1218,8 +1276,11 @@ function calc9(){
   html += `<div class="kvline"><span class="k">Correction Zv</span><span class="v ${corr>0?'warn':'ok'}">+${corr.toFixed(0)} ft</span></div>`;
   html += `<div class="section-title">Résultats</div>`;
   html += `<div class="kvline"><span class="k">${label_zi}</span><span class="v">${Zi.toFixed(0)} ft QNH</span></div>`;
-  html += `<div class="kvline"><span class="k">Altitude vraie (Zv)</span><span class="v" style="font-size:16px">${Zv.toFixed(0)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">Altitude vraie au franchissement (Zv)</span><span class="v" style="font-size:20px;font-weight:700;color:${corr>0?'#f4c430':'#7fff7f'}">${Zv.toFixed(0)} ft</span></div>`;
   html += `<div class="kvline"><span class="k">${label_zobs}</span><span class="v">${Zobs.toFixed(0)} ft</span></div>`;
+  if(m === 'manuel' && Zv < Zobs){
+    html += `<div class="banner-warn" style="margin-top:4px">⚠️ Zv (${Zv.toFixed(0)} ft) &lt; obstacle (${Zobs.toFixed(0)} ft) — l'avion passe <b>en dessous</b> du sommet !</div>`;
+  }
   if(m === 'rtba' && marge_sol !== null){
     html += `<div class="kvline"><span class="k">Hauteur vraie sol (Zv − Zterrain)</span><span class="v">${marge_sol.toFixed(0)} ft AGL</span></div>`;
   }
