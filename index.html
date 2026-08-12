@@ -334,52 +334,53 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
     </div>
   </fieldset>
 
-  <!-- Mode RTBA/ZR -->
+  <!-- ═══ Mode RTBA/ZR ═══ -->
   <div id="zv_rtba">
     <fieldset>
-      <legend>📋 Zone RTBA / ZR</legend>
+      <legend>📋 Zone RTBA / ZR — Données</legend>
       <div class="row"><label>QNH <span style="font-size:10px;color:var(--text-dim)">(auto onglet 4, modifiable)</span></label><input id="QNH_RTBA" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
-      <div class="row"><label>OAT dans la zone</label><input id="OAT_RTBA" type="number" step="1" value="25"><span class="unit">°C</span></div>
-      <div class="row"><label>Altitude terrain sous la zone</label><input id="ZTERRAIN" type="number" step="50" value="1000"><span class="unit">ft</span></div>
+      <div class="row"><label>OAT dans la zone (Windy/météo locale)</label><input id="OAT_RTBA" type="number" step="1" value="25"><span class="unit">°C</span></div>
+      <div class="row"><label>Altitude terrain sous la zone (Zterrain)</label><input id="ZTERRAIN" type="number" step="50" value="1000"><span class="unit">ft</span></div>
       <div class="row"><label>Plancher RTBA/ZR affiché (Zi)</label><input id="ZI_RTBA" type="number" step="50" value="2500"><span class="unit">ft</span></div>
     </fieldset>
     <div class="notes">
-      Saisir la <b>température dans la zone</b> (Windy/météo locale — pas forcément celle du terrain de départ).<br>
-      Saisir le <b>plancher de la zone</b> en Zi (ex : 2500 ft si ZRT 2000-6500 avec plancher à 2500 ft QNH).<br>
-      Saisir l'altitude du <b>terrain en dessous de la zone</b> en Zterrain.<br>
-      La Zv calculée donne la <b>vraie marge sous le plancher</b> et la <b>vraie hauteur sol</b> par temps chaud.
+      Saisir la <b>température dans la zone</b> (Windy — pas celle du terrain de départ).<br>
+      <b>Zi</b> = plancher de la zone | <b>Zterrain</b> = altitude du terrain en dessous.
     </div>
+    <button class="btn" onclick="calcAll()">Calculer altitude vraie</button>
+    <div id="p9_out_rtba" class="result"></div>
   </div>
 
-  <!-- Mode Col -->
+  <!-- ═══ Mode Col ═══ -->
   <div id="zv_col" class="hidden">
     <fieldset>
-      <legend>🏔️ Franchissement de col</legend>
+      <legend>🏔️ Franchissement de col — Données</legend>
       <div class="row"><label>OAT au col (auto onglet 5)</label><span class="ref" id="OAT_COL_ZV_REF">—</span><span class="unit">°C</span></div>
       <div class="row"><label>QNH (auto onglet 4)</label><span class="ref" id="QNH_COL_ZV_REF">—</span><span class="unit">hPa</span></div>
-      <div class="row"><label>Altitude col réelle (Zobs)</label><input id="ZOBS_COL" type="number" step="50" value="4100"><span class="unit">ft</span></div>
-      <div class="row"><label>Altitude programmée affichée (Zi)</label><input id="ZI_COL" type="number" step="50" value="4500"><span class="unit">ft</span></div>
+      <div class="row"><label>Altitude réelle du col (Zobs)</label><input id="ZOBS_COL" type="number" step="50" value="4100"><span class="unit">ft</span></div>
+      <div class="row"><label>Altitude affichée au franchissement (Zi)</label><input id="ZI_COL" type="number" step="50" value="4500"><span class="unit">ft</span></div>
     </fieldset>
     <div class="notes">
-      Saisir l'altitude <b>réelle du col</b> en Zobs (ex : 4100 ft pour le col Remomeix).<br>
-      Saisir l'<b>altitude que tu affiches</b> à l'altimètre lors du franchissement en Zi.<br>
-      La Zv vous donne votre <b>vraie marge au-dessus du col</b> compte tenu de la chaleur.
+      <b>Zobs</b> = altitude réelle du col (ex : 4100 ft col Remomeix).<br>
+      <b>Zi</b> = altitude que tu affiches à l'altimètre lors du franchissement.
     </div>
+    <button class="btn" onclick="calcAll()">Calculer altitude vraie</button>
+    <div id="p9_out_col" class="result"></div>
   </div>
 
-  <!-- Mode Manuel -->
+  <!-- ═══ Mode Manuel ═══ -->
   <div id="zv_manuel" class="hidden">
     <fieldset>
-      <legend>✏️ Saisie manuelle</legend>
+      <legend>✏️ Saisie manuelle — Données</legend>
       <div class="row"><label>OAT à l'altitude de vol</label><input id="OAT_ZV_MAN" type="number" step="1" value="25"><span class="unit">°C</span></div>
       <div class="row"><label>QNH</label><input id="QNH_ZV_MAN" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
       <div class="row"><label>Altitude affichée (Zi)</label><input id="ZI_MAN" type="number" step="50" value="3500"><span class="unit">ft</span></div>
       <div class="row"><label>Altitude obstacle / référence (Zobs)</label><input id="ZOBS_MAN" type="number" step="50" value="2497"><span class="unit">ft</span></div>
     </fieldset>
+    <button class="btn" onclick="calcAll()">Calculer altitude vraie</button>
+    <div id="p9_out_manuel" class="result"></div>
   </div>
 
-  <button class="btn" onclick="calcAll()">Calculer altitude vraie</button>
-  <div id="p9_out" class="result"></div>
   <div class="notes">
     <b>Formule :</b> Zv = Zi × (1 + 0,04 × ΔT_ISA_local / 10)<br>
     • Par temps chaud, Zv &gt; Zi : l'avion vole <b>plus haut</b> que l'altimètre<br>
@@ -1177,7 +1178,9 @@ function calc9(){
     html += `<div class="banner-warn" style="margin-top:8px">⚠️ Écart ISA important (+${dT_loc.toFixed(0)}°C) — la marge réelle est nettement réduite par rapport à l'altimètre.</div>`;
   }
 
-  document.getElementById('p9_out').innerHTML = html;
+  // Écrire dans le bon div résultat selon le mode
+  const outId = m === 'rtba' ? 'p9_out_rtba' : m === 'col' ? 'p9_out_col' : 'p9_out_manuel';
+  document.getElementById(outId).innerHTML = html;
 }
 
 // ============================================================
