@@ -350,14 +350,16 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
           <label><input type="radio" name="ZV_FLOOR" value="agl"><span>AGL (ft sol)</span></label>
         </div>
       </div>
-      <div class="row" id="zv_floor_msl_row"><label>Plancher zone affiché en ft QNH (Zi)</label><input id="ZI_RTBA" type="number" step="50" value="2500"><span class="unit">ft MSL</span></div>
-      <div class="row hidden" id="zv_floor_agl_row"><label>Plancher zone en ft AGL</label><input id="ZI_RTBA_AGL" type="number" step="50" value="800"><span class="unit">ft AGL</span></div>
-      <div class="row"><label>Altitude terrain sous la zone (Zterrain)</label><input id="ZTERRAIN" type="number" step="50" value="1000"><span class="unit">ft MSL</span></div>
+      <div class="row"><label>Marge de sécurité de vol sous le plancher</label><input id="MARGE_RTBA" type="number" step="50" value="300"><span class="unit">ft</span></div>
+      <div class="row" id="zv_floor_msl_row"><label>Plancher de la zone en ft QNH (lu sur la carte)</label><input id="ZI_RTBA" type="number" step="50" value="2500"><span class="unit">ft MSL</span></div>
+      <div class="row hidden" id="zv_floor_agl_row"><label>Plancher de la zone en ft AGL (lu sur la carte)</label><input id="ZI_RTBA_AGL" type="number" step="50" value="800"><span class="unit">ft AGL</span></div>
+      <div class="row"><label>Altitude MSL du terrain sous la zone (carte IGN / onglet 4)</label><input id="ZTERRAIN" type="number" step="50" value="1187"><span class="unit">ft MSL</span></div>
     </fieldset>
     <div class="notes">
-      <b>MSL</b> = altitude QNH affichée sur la carte (ex : plancher TMA 2500 ft).<br>
-      <b>AGL</b> = hauteur sol (ex : RTBA 800 AGL-2800 AGL → plancher = 800 ft AGL).<br>
-      En AGL : Zi = Zterrain + plancher AGL. Saisir Zterrain = altitude du terrain en dessous.
+      <b>MSL</b> : lire le plancher directement sur la carte (ex : TMA plancher 2500 ft → saisir 2500).<br>
+      <b>AGL</b> : lire le plancher en hauteur sol (ex : RTBA 800 AGL-2800 AGL → plancher = 800 ft AGL → saisir 800).<br>
+      <b>Altitude terrain</b> : altitude MSL du sol en dessous de la zone (carte IGN, ou onglet 4 si même terrain).<br>
+      En AGL, Zi = Zterrain + plancher AGL est calculé automatiquement.
     </div>
     <button class="btn" onclick="calcAll()">Calculer altitude vraie</button>
     <div id="p9_out_rtba" class="result"></div>
@@ -432,7 +434,7 @@ const FIELDS = ['LFG','LFD','LFAR',
   'OAT','ALT0','QNH','SLOPE',
   'ALTCOL','ALTCOL_PROG','DIST_COL','VIAS','VTYPE','CAP','TLEV','ZLEV','WDIR','WSPD','CHAIN','MARGE_MIN',
   'RH','TDEW0','RPM','OAT_ICE','WFACE','M_LDG',
-  'ZTERRAIN','ZI_RTBA','ZI_RTBA_AGL','QNH_RTBA','OAT_RTBA','OAT_ZV_MAN','QNH_ZV_MAN','ZI_MAN','ZOBS_MAN',
+  'ZTERRAIN','ZI_RTBA','ZI_RTBA_AGL','QNH_RTBA','OAT_RTBA','MARGE_RTBA','OAT_ZV_MAN','QNH_ZV_MAN','ZI_MAN','ZOBS_MAN',
   'OAT_TH','RH_TH','LF_LDG'];
 
 function syncVIAS(){
@@ -1126,6 +1128,7 @@ function calc9(){
     OAT  = v('OAT_RTBA');
     QNH  = v('QNH_RTBA');
     Zobs = v('ZTERRAIN');
+    const MARGE_RTBA = v('MARGE_RTBA') || 0;
     const floorEl = document.querySelector('input[name="ZV_FLOOR"]:checked');
     const isAGL = floorEl && floorEl.value === 'agl';
     if(isAGL){
@@ -1133,9 +1136,46 @@ function calc9(){
     } else {
       Zi = v('ZI_RTBA');
     }
+    const Zi_limite = Zi - MARGE_RTBA; // limite opérationnelle = plancher − marge
     label_zi    = isAGL ? `Plancher zone (${v('ZI_RTBA_AGL').toFixed(0)} ft AGL → ${Zi.toFixed(0)} ft MSL)` : 'Plancher zone RTBA/ZR (Zi MSL)';
     label_zobs  = 'Altitude terrain en dessous';
-    label_marge = 'Marge vraie sous le plancher';
+    label_marge = `Marge sous limite opérationnelle (plancher ${Zi.toFixed(0)} − sécurité ${MARGE_RTBA} ft)`;
+
+    const PA      = Zi + (1013 - QNH) * 27;
+    const ISA_loc = 15 - 0.002 * PA;
+    const dT_loc  = OAT - ISA_loc;
+    const corr    = 4 * (PA / 1000) * dT_loc;
+    const Zv      = Zi + corr;
+    const marge_sol = Zv - Zobs;
+    const marge   = Zi_limite - Zv; // positif = sous la limite, négatif = infraction
+
+    let verdict, vClass;
+    if(Zv > Zi)        { verdict = '❌ DÉPASSE LE PLANCHER — Infraction zone';      vClass = 'verdict-bad'; }
+    else if(marge < 0) { verdict = `❌ Dépasse la limite (plancher − ${MARGE_RTBA} ft)`; vClass = 'verdict-bad'; }
+    else if(marge < 100){ verdict = '⚠️ Très proche de la limite — vigilance';     vClass = 'verdict-warn'; }
+    else               { verdict = '✅ Vol sous la limite opérationnelle';           vClass = 'verdict-ok'; }
+
+    let html = '';
+    html += `<div class="section-title">Calculs</div>`;
+    html += `<div class="kvline"><span class="k">Température à l'altitude</span><span class="v">${OAT.toFixed(1)} °C</span></div>`;
+    html += `<div class="kvline"><span class="k">Altitude-pression (PA à Zi)</span><span class="v">${PA.toFixed(0)} ft</span></div>`;
+    html += `<div class="kvline"><span class="k">Écart ISA local</span><span class="v">${dT_loc>=0?'+':''}${dT_loc.toFixed(1)} °C</span></div>`;
+    html += `<div class="kvline"><span class="k">Correction Zv</span><span class="v ${corr>0?'warn':'ok'}">+${corr.toFixed(0)} ft</span></div>`;
+    html += `<div class="section-title">Résultats</div>`;
+    html += `<div class="kvline"><span class="k">${label_zi}</span><span class="v">${Zi.toFixed(0)} ft QNH</span></div>`;
+    html += `<div class="kvline"><span class="k">Limite opérationnelle (plancher − ${MARGE_RTBA} ft)</span><span class="v">${Zi_limite.toFixed(0)} ft QNH</span></div>`;
+    html += `<div class="kvline"><span class="k">Altitude vraie (Zv)</span><span class="v" style="font-size:16px">${Zv.toFixed(0)} ft</span></div>`;
+    html += `<div class="kvline"><span class="k">Altitude terrain en dessous</span><span class="v">${Zobs.toFixed(0)} ft</span></div>`;
+    html += `<div class="kvline"><span class="k">Hauteur vraie sol (Zv − Zterrain)</span><span class="v">${marge_sol.toFixed(0)} ft AGL</span></div>`;
+    html += `<div class="section-title">Marge réelle</div>`;
+    html += `<div class="verdict-box ${vClass}">${verdict}<span class="big">${marge.toFixed(0)} ft</span><span style="font-size:11px;opacity:0.8">${label_marge}</span></div>`;
+    if(corr >= 50){
+      html += `<div class="banner-warn" style="margin-top:8px">⚠️ Correction Zv importante (+${corr.toFixed(0)} ft) — l'altimètre sous-estime significativement l'altitude réelle.</div>`;
+    }
+
+    ['p9_out_rtba','p9_out_manuel'].forEach(id => document.getElementById(id).innerHTML = '');
+    document.getElementById('p9_out_rtba').innerHTML = html;
+    return;
   } else {
     OAT  = v('OAT_ZV_MAN');
     QNH  = v('QNH_ZV_MAN');
@@ -1146,11 +1186,11 @@ function calc9(){
     label_marge = 'Marge réelle / obstacle';
   }
 
-  const PA      = Zi + (1013 - QNH) * 30;
+  const PA      = Zi + (1013 - QNH) * 27;
   const ISA_loc = 15 - 0.002 * PA;
   const dT_loc  = OAT - ISA_loc;
-  const Zv      = Zi * (1 + 0.04 * dT_loc / 10);
-  const corr    = Zv - Zi;
+  const corr    = 4 * (PA / 1000) * dT_loc;   // base PA — plus rigoureuse
+  const Zv      = Zi + corr;
 
   // Pour RTBA : marge = Zi (plancher) − Zv (tu dois être EN DESSOUS du plancher)
   // Pour Manuel : marge = Zv − Zobs (tu dois être AU-DESSUS de l'obstacle)
