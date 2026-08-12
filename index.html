@@ -105,7 +105,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   <div class="tab" data-page="p7">7·Givrage</div>
   <div class="tab" data-page="p8">8·Atterrissage</div>
   <div class="tab" data-page="p9">9·Zv</div>
-  <div class="tab" data-page="p10">10·Thermique</div>
+  <div class="tab" data-page="p10">10·R.Thermique</div>
 </div>
 
 <!-- ONGLET 1 : Carburant -->
@@ -326,24 +326,63 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 <!-- ONGLET 9 : Altitude vraie (Zv) -->
 <div id="p9" class="page">
   <fieldset>
-    <legend>🔭 Conditions</legend>
-    <div class="row"><label>OAT sol (auto onglet 4)</label><span class="ref" id="OAT_ZV_REF">—</span><span class="unit">°C</span></div>
-    <div class="row"><label>QNH (auto onglet 4)</label><span class="ref" id="QNH_ZV_REF">—</span><span class="unit">hPa</span></div>
-    <div class="row"><label>Altitude terrain départ (auto onglet 4)</label><span class="ref" id="ALT_ZV_REF">—</span><span class="unit">ft</span></div>
+    <legend>🎯 Contexte d'utilisation</legend>
+    <div class="runway-toggle" style="flex-direction:column;gap:6px">
+      <label style="border-radius:8px;padding:10px"><input type="radio" name="ZV_MODE" value="rtba" checked><span>Zone RTBA / ZR — vol en basse altitude</span></label>
+      <label style="border-radius:8px;padding:10px"><input type="radio" name="ZV_MODE" value="col"><span>Franchissement de col</span></label>
+      <label style="border-radius:8px;padding:10px"><input type="radio" name="ZV_MODE" value="manuel"><span>Saisie manuelle</span></label>
+    </div>
   </fieldset>
-  <fieldset>
-    <legend>✏️ Saisie</legend>
-    <div class="row"><label>Altitude QNH affichée (Zi)</label><input id="ZI" type="number" step="50" value="3500"><span class="unit">ft</span></div>
-    <div class="row"><label>Altitude obstacle / relief (Zobs)</label><input id="ZOBS" type="number" step="50" value="2497"><span class="unit">ft</span></div>
-  </fieldset>
+
+  <!-- Mode RTBA/ZR -->
+  <div id="zv_rtba">
+    <fieldset>
+      <legend>📋 Zone RTBA / ZR</legend>
+      <div class="row"><label>OAT sol (auto onglet 4)</label><span class="ref" id="OAT_ZV_REF">—</span><span class="unit">°C</span></div>
+      <div class="row"><label>QNH (auto onglet 4)</label><span class="ref" id="QNH_ZV_REF">—</span><span class="unit">hPa</span></div>
+      <div class="row"><label>Altitude terrain sous la zone (Zterrain)</label><input id="ZTERRAIN" type="number" step="50" value="1187"><span class="unit">ft</span></div>
+      <div class="row"><label>Altitude plancher RTBA/ZR affichée (Zi)</label><input id="ZI_RTBA" type="number" step="50" value="2500"><span class="unit">ft</span></div>
+    </fieldset>
+    <div class="notes">
+      Saisir l'altitude <b>plancher de la zone</b> en Zi (ex : 2500 ft si ZRT 2000-6500 avec plancher à 2500 ft QNH).<br>
+      Saisir l'altitude du <b>terrain en dessous</b> en Zterrain.<br>
+      La Zv calculée vous donne votre <b>vraie hauteur sol</b> et votre <b>vraie marge sous la zone</b> par temps chaud.
+    </div>
+  </div>
+
+  <!-- Mode Col -->
+  <div id="zv_col" class="hidden">
+    <fieldset>
+      <legend>🏔️ Franchissement de col</legend>
+      <div class="row"><label>OAT au col (auto onglet 5)</label><span class="ref" id="OAT_COL_ZV_REF">—</span><span class="unit">°C</span></div>
+      <div class="row"><label>QNH (auto onglet 4)</label><span class="ref" id="QNH_COL_ZV_REF">—</span><span class="unit">hPa</span></div>
+      <div class="row"><label>Altitude col réelle (Zobs)</label><input id="ZOBS_COL" type="number" step="50" value="4100"><span class="unit">ft</span></div>
+      <div class="row"><label>Altitude programmée affichée (Zi)</label><input id="ZI_COL" type="number" step="50" value="4500"><span class="unit">ft</span></div>
+    </fieldset>
+    <div class="notes">
+      Saisir l'altitude <b>réelle du col</b> en Zobs (ex : 4100 ft pour le col Remomeix).<br>
+      Saisir l'<b>altitude que tu affiches</b> à l'altimètre lors du franchissement en Zi.<br>
+      La Zv vous donne votre <b>vraie marge au-dessus du col</b> compte tenu de la chaleur.
+    </div>
+  </div>
+
+  <!-- Mode Manuel -->
+  <div id="zv_manuel" class="hidden">
+    <fieldset>
+      <legend>✏️ Saisie manuelle</legend>
+      <div class="row"><label>OAT à l'altitude de vol</label><input id="OAT_ZV_MAN" type="number" step="1" value="25"><span class="unit">°C</span></div>
+      <div class="row"><label>QNH</label><input id="QNH_ZV_MAN" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
+      <div class="row"><label>Altitude affichée (Zi)</label><input id="ZI_MAN" type="number" step="50" value="3500"><span class="unit">ft</span></div>
+      <div class="row"><label>Altitude obstacle / référence (Zobs)</label><input id="ZOBS_MAN" type="number" step="50" value="2497"><span class="unit">ft</span></div>
+    </fieldset>
+  </div>
+
   <button class="btn" onclick="calcAll()">Calculer altitude vraie</button>
   <div id="p9_out" class="result"></div>
   <div class="notes">
-    <b>Formule :</b> Zv = Zi × (1 + 0,04 × ΔT_ISA / 10) avec ΔT_ISA = OAT sol − 15°C<br>
-    • Approximation standard valable jusqu'à ~10 000 ft<br>
-    • Par temps chaud, Zv &gt; Zi : l'avion vole <b>plus haut</b> que l'altimètre n'indique<br>
-    • La marge réelle sol = Zv − altitude terrain (pas Zi − terrain)<br>
-    • La marge réelle obstacle = Zv − Zobs<br>
+    <b>Formule :</b> Zv = Zi × (1 + 0,04 × ΔT_ISA_local / 10)<br>
+    • Par temps chaud, Zv &gt; Zi : l'avion vole <b>plus haut</b> que l'altimètre<br>
+    • La marge réelle = Zv − Zobs (pas Zi − Zobs)<br>
     • <b>Usage non certifié — vérifier avec les abaques officiels</b>
   </div>
 </div>
@@ -352,15 +391,27 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 <div id="p10" class="page">
   <fieldset>
     <legend>🌡️ Conditions</legend>
-    <div class="row"><label>OAT — Température extérieure (auto onglet 4)</label><span class="ref" id="OAT_TH_REF">—</span><span class="unit">°C</span></div>
-    <div class="row"><label>Humidité relative RH (auto onglet 7)</label><span class="ref" id="RH_TH_REF">—</span><span class="unit">%</span></div>
+    <div class="row">
+      <label>Température OAT <span id="OAT_TH_SYNC" class="sync-tag synced">🔗 onglet 4</span></label>
+      <input id="OAT_TH" type="number" step="1" value="15"><span class="unit">°C</span>
+    </div>
+    <div class="row" style="border:none;padding-top:0">
+      <button type="button" class="btn-mini" id="btn_sync_oat_th">🔄 Resynchroniser sur onglet 4</button>
+    </div>
+    <div class="row">
+      <label>Humidité relative (RH) <span id="RH_TH_SYNC" class="sync-tag synced">🔗 onglet 7</span></label>
+      <input id="RH_TH" type="number" step="1" min="1" max="100" value="50"><span class="unit">%</span>
+    </div>
+    <div class="row" style="border:none;padding-top:0">
+      <button type="button" class="btn-mini" id="btn_sync_rh_th">🔄 Resynchroniser sur onglet 7</button>
+    </div>
   </fieldset>
   <button class="btn" onclick="calcAll()">Évaluer risque thermique</button>
   <div id="p10_out" class="result"></div>
   <div class="notes">
     <b>Source :</b> Diagramme FFA / Armée de l'Air — Aviation et Pilote n°631 Août 2026<br>
-    • Axes : Température de l'air (°C) × Humidité relative (%)<br>
-    • <span style="color:#4ade80">■ Vert</span> : faible danger — aucune précaution particulière<br>
+    • OAT et RH modifiables indépendamment des autres onglets<br>
+    • <span style="color:#4ade80">■ Vert</span> : faible danger<br>
     • <span style="color:#fbbf24">■ Jaune</span> : danger possible — hydratation, ventilation, repos<br>
     • <span style="color:#f97316">■ Orange</span> : danger significatif — 2 vols max/24h, repos 4h avant<br>
     • <span style="color:#f87171">■ Rouge</span> : danger élevé — avion sous abri, attente limitée, aucun autre vol 24h
@@ -379,7 +430,9 @@ const FIELDS = ['LFG','LFD','LFAR',
   'MVIDE','MPIL','MPAX_AV','MPAX_ARG','MPAX_ARD','MBAG',
   'OAT','ALT0','QNH','SLOPE',
   'ALTCOL','DIST_COL','VIAS','VTYPE','CAP','TLEV','ZLEV','WDIR','WSPD','CHAIN','MARGE_MIN',
-  'RH','TDEW0','RPM','OAT_ICE','WFACE','M_LDG','ZI','ZOBS'];
+  'RH','TDEW0','RPM','OAT_ICE','WFACE','M_LDG',
+  'ZTERRAIN','ZI_RTBA','ZOBS_COL','ZI_COL','OAT_ZV_MAN','QNH_ZV_MAN','ZI_MAN','ZOBS_MAN',
+  'OAT_TH','RH_TH'];
 
 function syncVIAS(){
   const vt = document.getElementById('VTYPE');
@@ -429,6 +482,8 @@ function loadAll(){
   const vtype = localStorage.getItem('hrej_VTYPE');
   if(vtype){ const el = document.getElementById('VTYPE'); if(el){ el.value = vtype; syncVIAS(); } }
   if(localStorage.getItem('hrej_OAT_ICE_SYNC') === null) localStorage.setItem('hrej_OAT_ICE_SYNC', 'auto');
+  if(localStorage.getItem('hrej_OAT_TH_SYNC') === null) localStorage.setItem('hrej_OAT_TH_SYNC', 'auto');
+  if(localStorage.getItem('hrej_RH_TH_SYNC') === null) localStorage.setItem('hrej_RH_TH_SYNC', 'auto');
   if(localStorage.getItem('hrej_OAT_ICE_SYNC') === 'auto'){
     const oat4 = document.getElementById('OAT');
     const oatIce = document.getElementById('OAT_ICE');
@@ -1030,61 +1085,97 @@ function calc8(){
 }
 
 // ============================================================
-// ONGLET 9 — Altitude vraie (Zv)
-// Zv = Zi × (1 + 0,04 × ΔT_ISA / 10)
-// ΔT_ISA = OAT sol − 15°C
 // ============================================================
+// ONGLET 9 — Altitude vraie (Zv) — 3 modes
+// ============================================================
+function updateZvModeUI(){
+  const mode = document.querySelector('input[name="ZV_MODE"]:checked');
+  const m = mode ? mode.value : 'rtba';
+  document.getElementById('zv_rtba').classList.toggle('hidden', m !== 'rtba');
+  document.getElementById('zv_col').classList.toggle('hidden', m !== 'col');
+  document.getElementById('zv_manuel').classList.toggle('hidden', m !== 'manuel');
+}
+
 function calc9(){
-  const OAT  = v('OAT');
-  const QNH  = v('QNH');
-  const ALT0 = v('ALT0');
-  const ZI   = v('ZI');
-  const ZOBS = v('ZOBS');
+  const mode = document.querySelector('input[name="ZV_MODE"]:checked');
+  const m = mode ? mode.value : 'rtba';
 
-  document.getElementById('OAT_ZV_REF').textContent = OAT.toFixed(1);
-  document.getElementById('QNH_ZV_REF').textContent  = QNH.toFixed(0);
-  document.getElementById('ALT_ZV_REF').textContent  = ALT0.toFixed(0);
+  let OAT, QNH, Zi, Zobs, label_zi, label_zobs, label_marge;
 
-  const dT_ISA = OAT - 15;
-  const Zv = ZI * (1 + 0.04 * dT_ISA / 10);
-  const PA = ZI + (1013 - QNH) * 30;  // altitude-pression à Zi
+  if(m === 'rtba'){
+    OAT   = v('OAT');   // sol ← onglet 4
+    QNH   = v('QNH');
+    Zi    = v('ZI_RTBA');
+    Zobs  = v('ZTERRAIN');
+    label_zi    = 'Plancher zone RTBA/ZR affiché';
+    label_zobs  = 'Altitude terrain en dessous';
+    label_marge = 'Marge réelle sous le plancher de zone';
+    document.getElementById('OAT_ZV_REF').textContent = OAT.toFixed(1);
+    document.getElementById('QNH_ZV_REF').textContent  = QNH.toFixed(0);
+
+  } else if(m === 'col'){
+    // OAT au col depuis onglet 5 (OATcol calculé)
+    // On le récupère via le DOM si disponible, sinon on approche
+    QNH   = v('QNH');
+    Zi    = v('ZI_COL');
+    Zobs  = v('ZOBS_COL');
+    const ALTCOL = v('ALTCOL');
+    const ALT0   = v('ALT0');
+    const TLEV   = v('TLEV');
+    const ZLEV   = v('ZLEV');
+    const PAdep  = ALT0  + (1013 - QNH) * 27;
+    const PAcol  = ALTCOL + (1013 - QNH) * 27;
+    const PALEV  = ZLEV  + (1013 - QNH) * 27;
+    OAT = v('OAT') + ((TLEV - v('OAT')) * (PAcol - PAdep) / (Math.max(1, PALEV - PAdep)));
+    document.getElementById('OAT_COL_ZV_REF').textContent = OAT.toFixed(1);
+    document.getElementById('QNH_COL_ZV_REF').textContent  = QNH.toFixed(0);
+    label_zi    = 'Altitude affichée au franchissement';
+    label_zobs  = 'Altitude réelle du col';
+    label_marge = 'Marge vraie au-dessus du col';
+
+  } else {
+    OAT   = v('OAT_ZV_MAN');
+    QNH   = v('QNH_ZV_MAN');
+    Zi    = v('ZI_MAN');
+    Zobs  = v('ZOBS_MAN');
+    label_zi    = 'Altitude affichée (Zi)';
+    label_zobs  = 'Altitude obstacle / référence';
+    label_marge = 'Marge réelle / obstacle';
+  }
+
+  // Calcul Zv
+  const PA      = Zi + (1013 - QNH) * 30;
   const ISA_loc = 15 - 0.002 * PA;
-  const dT_loc  = OAT - ISA_loc;      // écart ISA local à l'altitude de vol
-  const Zv_loc  = ZI * (1 + 0.04 * dT_loc / 10); // version plus précise
+  const dT_loc  = OAT - ISA_loc;
+  const Zv      = Zi * (1 + 0.04 * dT_loc / 10);
+  const dT_sol  = v('OAT') - 15;
+  const corr    = Zv - Zi;
+  const marge   = Zv - Zobs;
 
-  const marge_sol = Zv_loc - ALT0;
-  const marge_obs = Zv_loc - ZOBS;
-
-  let cls_sol  = marge_sol > 1000 ? 'ok' : marge_sol > 500 ? 'warn' : 'bad';
-  let cls_obs  = marge_obs > 1000 ? 'ok' : marge_obs > 300  ? 'warn' : 'bad';
+  let cls_marge = marge > 500 ? 'ok' : marge > 200 ? 'warn' : 'bad';
+  let verdict, vClass;
+  if(marge < 0)    { verdict = '❌ EN DESSOUS DE LA RÉFÉRENCE'; vClass = 'verdict-bad'; }
+  else if(marge < 200) { verdict = '❌ Marge insuffisante'; vClass = 'verdict-bad'; }
+  else if(marge < 500) { verdict = '⚠️ Marge faible — vigilance'; vClass = 'verdict-warn'; }
+  else                 { verdict = '✅ Marge correcte'; vClass = 'verdict-ok'; }
 
   let html = '';
   html += `<div class="section-title">Calculs</div>`;
-  html += `<div class="kvline"><span class="k">Écart ISA sol (OAT − 15°C)</span><span class="v">${dT_ISA >= 0 ? '+' : ''}${dT_ISA.toFixed(1)} °C</span></div>`;
+  html += `<div class="kvline"><span class="k">Température à l'altitude</span><span class="v">${OAT.toFixed(1)} °C</span></div>`;
   html += `<div class="kvline"><span class="k">Altitude-pression (PA à Zi)</span><span class="v">${PA.toFixed(0)} ft</span></div>`;
-  html += `<div class="kvline"><span class="k">Écart ISA local (à l'altitude)</span><span class="v">${dT_loc >= 0 ? '+' : ''}${dT_loc.toFixed(1)} °C</span></div>`;
-  html += `<div class="kvline"><span class="k">Correction Zv</span><span class="v">+${(Zv_loc - ZI).toFixed(0)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">Écart ISA local</span><span class="v">${dT_loc >= 0 ? '+' : ''}${dT_loc.toFixed(1)} °C</span></div>`;
+  html += `<div class="kvline"><span class="k">Correction Zv</span><span class="v ${corr > 0 ? 'warn' : 'ok'}">+${corr.toFixed(0)} ft</span></div>`;
 
   html += `<div class="section-title">Résultats</div>`;
-  html += `<div class="kvline"><span class="k">Altitude affichée (Zi)</span><span class="v">${ZI.toFixed(0)} ft QNH</span></div>`;
-  html += `<div class="kvline"><span class="k">Altitude vraie (Zv)</span><span class="v" style="font-size:16px">${Zv_loc.toFixed(0)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">${label_zi} (Zi)</span><span class="v">${Zi.toFixed(0)} ft QNH</span></div>`;
+  html += `<div class="kvline"><span class="k">Altitude vraie (Zv)</span><span class="v" style="font-size:16px">${Zv.toFixed(0)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">${label_zobs}</span><span class="v">${Zobs.toFixed(0)} ft</span></div>`;
 
-  html += `<div class="section-title">Marges réelles</div>`;
-  html += `<div class="kvline"><span class="k">Marge / terrain départ (${ALT0.toFixed(0)} ft)</span><span class="v ${cls_sol}">${marge_sol.toFixed(0)} ft</span></div>`;
-  html += `<div class="kvline"><span class="k">Marge / obstacle saisi (${ZOBS.toFixed(0)} ft)</span><span class="v ${cls_obs}">${marge_obs.toFixed(0)} ft</span></div>`;
+  html += `<div class="section-title">Marge réelle</div>`;
+  html += `<div class="verdict-box ${vClass}">${verdict}<span class="big">${marge.toFixed(0)} ft</span><span style="font-size:11px;opacity:0.8">${label_marge}</span></div>`;
 
-  // Verdict global marge obstacle
-  let verdict, vClass;
-  if(marge_obs < 0)    { verdict = '❌ EN DESSOUS DE L\'OBSTACLE'; vClass = 'verdict-bad'; }
-  else if(marge_obs < 300) { verdict = '❌ Marge insuffisante'; vClass = 'verdict-bad'; }
-  else if(marge_obs < 500) { verdict = '⚠️ Marge faible — vigilance'; vClass = 'verdict-warn'; }
-  else                     { verdict = '✅ Marge correcte'; vClass = 'verdict-ok'; }
-
-  html += `<div class="verdict-box ${vClass}">${verdict}<span class="big">${marge_obs.toFixed(0)} ft</span><span style="font-size:11px;opacity:0.8">au-dessus de l'obstacle (Zv réelle)</span></div>`;
-
-  // Rappel si ISA+ significatif
-  if(dT_ISA >= 15){
-    html += `<div class="banner-warn" style="margin-top:8px">⚠️ ISA +${dT_ISA.toFixed(0)}°C — écart important. La marge réelle est significativement réduite par rapport à l'altimètre.</div>`;
+  if(dT_loc >= 15){
+    html += `<div class="banner-warn" style="margin-top:8px">⚠️ Écart ISA important (+${dT_loc.toFixed(0)}°C) — la marge réelle est nettement réduite par rapport à l'altimètre.</div>`;
   }
 
   document.getElementById('p9_out').innerHTML = html;
@@ -1092,53 +1183,70 @@ function calc9(){
 
 // ============================================================
 // ONGLET 10 — Risque thermique pilote (tableau FFA)
-// Source : Aviation et Pilote n°631 Août 2026 / Armée de l'Air
+// OAT : lié onglet 4 par défaut, modifiable
+// RH  : lié onglet 7 si mode RH, sinon saisie directe
 // ============================================================
 function calc10(){
-  const OAT = v('OAT');
-  const RH  = v('RH');
+  // Sync OAT depuis onglet 4 si auto
+  if((localStorage.getItem('hrej_OAT_TH_SYNC') || 'auto') === 'auto'){
+    document.getElementById('OAT_TH').value = document.getElementById('OAT').value;
+  }
+  // Sync RH depuis onglet 7 si auto ET si mode RH dans givrage
+  if((localStorage.getItem('hrej_RH_TH_SYNC') || 'auto') === 'auto'){
+    const iceMode = document.querySelector('input[name="ICEMODE"]:checked');
+    if(!iceMode || iceMode.value === 'rh'){
+      document.getElementById('RH_TH').value = document.getElementById('RH').value;
+    }
+    // Si mode dew point dans givrage : on laisse RH_TH tel quel pour saisie manuelle
+  }
 
-  document.getElementById('OAT_TH_REF').textContent = OAT.toFixed(1);
-  document.getElementById('RH_TH_REF').textContent  = RH.toFixed(0);
+  const OAT = v('OAT_TH');
+  const RH  = v('RH_TH');
 
   // Tableau FFA — frontières lues sur le diagramme
   // zone(OAT, RH) → 4=Rouge, 3=Orange, 2=Jaune, 1=Vert
   function zone(oat, rh){
     const t = Math.round(oat);
-    // Rouge
-    if(t >= 45)                         return 4;
-    if(t >= 43 && rh >= 20)             return 4;
-    if(t === 42 && rh >= 20)            return 4;
-    if(t === 41 && rh >= 30)            return 4;
-    if(t === 40 && rh >= 40)            return 4;
-    if(t === 39 && rh >= 50)            return 4;
-    if(t === 38 && rh >= 50)            return 4;
-    if(t === 37 && rh >= 60)            return 4;
-    if(t === 36 && rh >= 70)            return 4;
-    if(t === 35 && rh >= 80)            return 4;
-    // Orange
-    if(t >= 43 && rh >= 10)             return 3;
-    if(t >= 41 && rh >= 10)             return 3;
-    if(t === 40 && rh >= 10)            return 3;
-    if(t === 39 && rh >= 20)            return 3;
-    if(t === 38 && rh >= 30)            return 3;
-    if(t === 37 && rh >= 30)            return 3;
-    if(t === 36 && rh >= 40)            return 3;
-    if(t === 35 && rh >= 50)            return 3;
-    if(t === 34 && rh >= 60)            return 3;
-    if(t === 33 && rh >= 70)            return 3;
-    if(t === 32 && rh >= 80)            return 3;
-    if(t === 31 && rh >= 90)            return 3;
-    // Jaune
-    if(t >= 35 && rh >= 10)             return 2;
-    if(t >= 31 && rh >= 20)             return 2;
-    if(t === 30 && rh >= 30)            return 2;
-    if(t === 29 && rh >= 50)            return 2;
-    if(t === 28 && rh >= 60)            return 2;
-    if(t === 27 && rh >= 70)            return 2;
-    if(t === 26 && rh >= 80)            return 2;
-    if(t === 25 && rh >= 90)            return 2;
-    // Vert
+    // ── ROUGE ──────────────────────────────────────────────
+    if(t >= 45)                  return 4; // toute HR
+    if(t === 44 && rh >= 10)     return 4;
+    if(t === 43 && rh >= 20)     return 4;
+    if(t === 42 && rh >= 20)     return 4;
+    if(t === 41 && rh >= 30)     return 4;
+    if(t === 40 && rh >= 40)     return 4;
+    if(t === 39 && rh >= 40)     return 4;
+    if(t === 38 && rh >= 50)     return 4;
+    if(t === 37 && rh >= 50)     return 4;
+    if(t === 36 && rh >= 60)     return 4;
+    if(t === 35 && rh >= 50)     return 4;
+    // ── ORANGE ─────────────────────────────────────────────
+    if(t === 44 && rh >= 10)     return 3; // déjà rouge
+    if(t === 43 && rh >= 10)     return 3;
+    if(t === 42 && rh >= 10)     return 3;
+    if(t === 41 && rh >= 10)     return 3;
+    if(t === 40 && rh >= 20)     return 3;
+    if(t === 39 && rh >= 20)     return 3;
+    if(t === 38 && rh >= 30)     return 3;
+    if(t === 37 && rh >= 20)     return 3;
+    if(t === 36 && rh >= 30)     return 3;
+    if(t === 35 && rh >= 30)     return 3;
+    if(t === 34 && rh >= 50)     return 3;
+    if(t === 33 && rh >= 60)     return 3;
+    if(t === 32 && rh >= 60)     return 3;
+    if(t === 31 && rh >= 90)     return 3;
+    // ── JAUNE ──────────────────────────────────────────────
+    if(t >= 38 && rh >= 10)      return 2;
+    if(t === 37 && rh >= 10)     return 2;
+    if(t === 36 && rh >= 10)     return 2;
+    if(t === 35 && rh >= 10)     return 2;
+    if(t === 34 && rh >= 10)     return 2;
+    if(t === 33 && rh >= 10)     return 2;
+    if(t === 32 && rh >= 20)     return 2;
+    if(t === 31 && rh >= 30)     return 2;
+    if(t === 30 && rh >= 40)     return 2;
+    if(t === 29 && rh >= 60)     return 2;
+    if(t === 28 && rh >= 80)     return 2;
+    // ── VERT ───────────────────────────────────────────────
     return 1;
   }
 
@@ -1189,10 +1297,13 @@ document.querySelectorAll('input').forEach(el => {
   el.addEventListener('change', calcAll);
 });
 
-// Sync OAT onglet 4 ↔ onglet 7
+// ── Listeners sync OAT onglet 4 → OAT_ICE (onglet 7) ──────
 document.getElementById('OAT').addEventListener('input', () => {
   if((localStorage.getItem('hrej_OAT_ICE_SYNC') || 'auto') === 'auto'){
     document.getElementById('OAT_ICE').value = document.getElementById('OAT').value;
+  }
+  if((localStorage.getItem('hrej_OAT_TH_SYNC') || 'auto') === 'auto'){
+    document.getElementById('OAT_TH').value = document.getElementById('OAT').value;
   }
 });
 document.getElementById('OAT_ICE').addEventListener('input', () => {
@@ -1208,14 +1319,69 @@ document.getElementById('btn_sync_oat').addEventListener('click', () => {
   calcAll();
 });
 
-// Quand les données de vol changent : si M_LDG est en mode auto, recalculer
+// ── Listeners sync M_LDG ────────────────────────────────────
 document.getElementById('M_LDG').addEventListener('input', () => {
   localStorage.setItem('hrej_M_LDG_SYNC', 'manual');
   document.getElementById('M_LDG_SYNC').textContent = '✋ manuel';
   document.getElementById('M_LDG_SYNC').className = 'sync-tag manual';
 });
 
+// ── Listeners sync OAT_TH (onglet 10) ← OAT (onglet 4) ────
+document.getElementById('OAT_TH').addEventListener('input', () => {
+  localStorage.setItem('hrej_OAT_TH_SYNC', 'manual');
+  document.getElementById('OAT_TH_SYNC').textContent = '✋ manuel';
+  document.getElementById('OAT_TH_SYNC').className = 'sync-tag manual';
+  document.getElementById('btn_sync_oat_th').classList.remove('disabled');
+});
+document.getElementById('btn_sync_oat_th').addEventListener('click', () => {
+  localStorage.setItem('hrej_OAT_TH_SYNC', 'auto');
+  document.getElementById('OAT_TH').value = document.getElementById('OAT').value;
+  document.getElementById('OAT_TH_SYNC').textContent = '🔗 onglet 4';
+  document.getElementById('OAT_TH_SYNC').className = 'sync-tag synced';
+  document.getElementById('btn_sync_oat_th').classList.add('disabled');
+  calcAll();
+});
+
+// ── Listeners sync RH_TH (onglet 10) ← RH (onglet 7) ──────
+document.getElementById('RH').addEventListener('input', () => {
+  if((localStorage.getItem('hrej_RH_TH_SYNC') || 'auto') === 'auto'){
+    const iceMode = document.querySelector('input[name="ICEMODE"]:checked');
+    if(!iceMode || iceMode.value === 'rh'){
+      document.getElementById('RH_TH').value = document.getElementById('RH').value;
+    }
+  }
+});
+document.getElementById('RH_TH').addEventListener('input', () => {
+  localStorage.setItem('hrej_RH_TH_SYNC', 'manual');
+  document.getElementById('RH_TH_SYNC').textContent = '✋ manuel';
+  document.getElementById('RH_TH_SYNC').className = 'sync-tag manual';
+  document.getElementById('btn_sync_rh_th').classList.remove('disabled');
+});
+document.getElementById('btn_sync_rh_th').addEventListener('click', () => {
+  localStorage.setItem('hrej_RH_TH_SYNC', 'auto');
+  const iceMode = document.querySelector('input[name="ICEMODE"]:checked');
+  if(!iceMode || iceMode.value === 'rh'){
+    document.getElementById('RH_TH').value = document.getElementById('RH').value;
+  }
+  document.getElementById('RH_TH_SYNC').textContent = '🔗 onglet 7';
+  document.getElementById('RH_TH_SYNC').className = 'sync-tag synced';
+  document.getElementById('btn_sync_rh_th').classList.add('disabled');
+  calcAll();
+});
+
+// ── Listener mode ZV ────────────────────────────────────────
+document.querySelectorAll('input[name="ZV_MODE"]').forEach(el => {
+  el.addEventListener('change', () => { updateZvModeUI(); calcAll(); });
+});
+
+// ── Listeners génériques inputs ─────────────────────────────
+document.querySelectorAll('input').forEach(el => {
+  el.addEventListener('input', calcAll);
+  el.addEventListener('change', calcAll);
+});
+
 loadAll();
+updateZvModeUI();
 calcAll();
 
 if('serviceWorker' in navigator){
