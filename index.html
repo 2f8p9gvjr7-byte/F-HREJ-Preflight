@@ -338,15 +338,16 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   <div id="zv_rtba">
     <fieldset>
       <legend>📋 Zone RTBA / ZR</legend>
-      <div class="row"><label>OAT sol (auto onglet 4)</label><span class="ref" id="OAT_ZV_REF">—</span><span class="unit">°C</span></div>
-      <div class="row"><label>QNH (auto onglet 4)</label><span class="ref" id="QNH_ZV_REF">—</span><span class="unit">hPa</span></div>
-      <div class="row"><label>Altitude terrain sous la zone (Zterrain)</label><input id="ZTERRAIN" type="number" step="50" value="1187"><span class="unit">ft</span></div>
-      <div class="row"><label>Altitude plancher RTBA/ZR affichée (Zi)</label><input id="ZI_RTBA" type="number" step="50" value="2500"><span class="unit">ft</span></div>
+      <div class="row"><label>QNH <span style="font-size:10px;color:var(--text-dim)">(auto onglet 4, modifiable)</span></label><input id="QNH_RTBA" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
+      <div class="row"><label>OAT dans la zone</label><input id="OAT_RTBA" type="number" step="1" value="25"><span class="unit">°C</span></div>
+      <div class="row"><label>Altitude terrain sous la zone</label><input id="ZTERRAIN" type="number" step="50" value="1000"><span class="unit">ft</span></div>
+      <div class="row"><label>Plancher RTBA/ZR affiché (Zi)</label><input id="ZI_RTBA" type="number" step="50" value="2500"><span class="unit">ft</span></div>
     </fieldset>
     <div class="notes">
-      Saisir l'altitude <b>plancher de la zone</b> en Zi (ex : 2500 ft si ZRT 2000-6500 avec plancher à 2500 ft QNH).<br>
-      Saisir l'altitude du <b>terrain en dessous</b> en Zterrain.<br>
-      La Zv calculée vous donne votre <b>vraie hauteur sol</b> et votre <b>vraie marge sous la zone</b> par temps chaud.
+      Saisir la <b>température dans la zone</b> (Windy/météo locale — pas forcément celle du terrain de départ).<br>
+      Saisir le <b>plancher de la zone</b> en Zi (ex : 2500 ft si ZRT 2000-6500 avec plancher à 2500 ft QNH).<br>
+      Saisir l'altitude du <b>terrain en dessous de la zone</b> en Zterrain.<br>
+      La Zv calculée donne la <b>vraie marge sous le plancher</b> et la <b>vraie hauteur sol</b> par temps chaud.
     </div>
   </div>
 
@@ -431,7 +432,7 @@ const FIELDS = ['LFG','LFD','LFAR',
   'OAT','ALT0','QNH','SLOPE',
   'ALTCOL','DIST_COL','VIAS','VTYPE','CAP','TLEV','ZLEV','WDIR','WSPD','CHAIN','MARGE_MIN',
   'RH','TDEW0','RPM','OAT_ICE','WFACE','M_LDG',
-  'ZTERRAIN','ZI_RTBA','ZOBS_COL','ZI_COL','OAT_ZV_MAN','QNH_ZV_MAN','ZI_MAN','ZOBS_MAN',
+  'ZTERRAIN','ZI_RTBA','QNH_RTBA','OAT_RTBA','ZOBS_COL','ZI_COL','OAT_ZV_MAN','QNH_ZV_MAN','ZI_MAN','ZOBS_MAN',
   'OAT_TH','RH_TH'];
 
 function syncVIAS(){
@@ -1103,15 +1104,13 @@ function calc9(){
   let OAT, QNH, Zi, Zobs, label_zi, label_zobs, label_marge;
 
   if(m === 'rtba'){
-    OAT   = v('OAT');   // sol ← onglet 4
-    QNH   = v('QNH');
+    OAT   = v('OAT_RTBA');
+    QNH   = v('QNH_RTBA');
     Zi    = v('ZI_RTBA');
     Zobs  = v('ZTERRAIN');
     label_zi    = 'Plancher zone RTBA/ZR affiché';
     label_zobs  = 'Altitude terrain en dessous';
     label_marge = 'Marge réelle sous le plancher de zone';
-    document.getElementById('OAT_ZV_REF').textContent = OAT.toFixed(1);
-    document.getElementById('QNH_ZV_REF').textContent  = QNH.toFixed(0);
 
   } else if(m === 'col'){
     // OAT au col depuis onglet 5 (OATcol calculé)
@@ -1367,6 +1366,17 @@ document.getElementById('btn_sync_rh_th').addEventListener('click', () => {
   document.getElementById('RH_TH_SYNC').className = 'sync-tag synced';
   document.getElementById('btn_sync_rh_th').classList.add('disabled');
   calcAll();
+});
+
+// Sync QNH_RTBA ← QNH (onglet 4) à chaque changement
+document.getElementById('QNH').addEventListener('input', () => {
+  const qnhRtba = document.getElementById('QNH_RTBA');
+  if(qnhRtba && !qnhRtba.dataset.manual){
+    qnhRtba.value = document.getElementById('QNH').value;
+  }
+});
+document.getElementById('QNH_RTBA').addEventListener('input', () => {
+  document.getElementById('QNH_RTBA').dataset.manual = '1';
 });
 
 // ── Listener mode ZV ────────────────────────────────────────
