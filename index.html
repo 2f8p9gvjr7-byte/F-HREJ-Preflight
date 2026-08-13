@@ -341,7 +341,6 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 
   <!-- ═══ Mode RTBA/ZR ═══ -->
   <div id="zv_rtba">
-    <div id="p9_out_rtba" class="result"></div>
     <fieldset>
       <legend>📋 Zone RTBA / ZR — Données</legend>
       <div class="row"><label>QNH <span style="font-size:10px;color:var(--text-dim)">(auto onglet 4, modifiable)</span></label><input id="QNH_RTBA" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
@@ -358,11 +357,11 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
       <div class="row"><label>Marge de sécurité</label><input id="MARGE_RTBA" type="number" step="50" value="300"><span class="unit">ft</span></div>
     </fieldset>
     <button class="btn" onclick="calcAll()">Calculer</button>
+    <div id="p9_out_rtba" class="result"></div>
   </div>
 
   <!-- ═══ Mode Altitude à afficher ═══ -->
   <div id="zv_afficher" class="hidden">
-    <div id="p9_out_afficher" class="result"></div>
     <fieldset>
       <legend>🎯 Altitude à afficher — Données</legend>
       <div class="row"><label>Type de limite</label>
@@ -385,11 +384,11 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
       <div class="row"><label>QNH</label><input id="QNH_AFF" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
     </fieldset>
     <button class="btn" onclick="calcAll()">Calculer</button>
+    <div id="p9_out_afficher" class="result"></div>
   </div>
 
   <!-- ═══ Mode Manuel ═══ -->
   <div id="zv_manuel" class="hidden">
-    <div id="p9_out_manuel" class="result"></div>
     <fieldset>
       <legend>✏️ Saisie manuelle — Données</legend>
       <div class="row"><label>Calage</label>
@@ -404,6 +403,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
       <div class="row"><label>Altitude sommet / obstacle</label><input id="ZOBS_MAN" type="number" step="50" value="2497"><span class="unit">ft MSL</span></div>
     </fieldset>
     <button class="btn" onclick="calcAll()">Calculer</button>
+    <div id="p9_out_manuel" class="result"></div>
   </div>
 
   <div class="notes" style="margin-top:8px">
@@ -1351,27 +1351,23 @@ function calc9(){
   }
 
   let html = '';
-  html += `<div class="section-title">Calculs</div>`;
-  html += `<div class="kvline"><span class="k">Température à l'altitude</span><span class="v">${OAT.toFixed(1)} °C</span></div>`;
-  html += `<div class="kvline"><span class="k">Altitude-pression (PA à Zi)</span><span class="v">${PA.toFixed(0)} ft</span></div>`;
-  html += `<div class="kvline"><span class="k">Écart ISA local</span><span class="v">${dT_loc>=0?'+':''}${dT_loc.toFixed(1)} °C</span></div>`;
-  html += `<div class="kvline"><span class="k">Correction Zv</span><span class="v ${corr>0?'warn':'ok'}">+${corr.toFixed(0)} ft</span></div>`;
-  html += `<div class="section-title">Résultats</div>`;
-  html += `<div class="kvline"><span class="k">${label_zi}</span><span class="v">${Zi.toFixed(0)} ft QNH</span></div>`;
-  html += `<div class="kvline"><span class="k">Altitude vraie au franchissement (Zv)</span><span class="v" style="font-size:20px;font-weight:700;color:${corr>0?'#f4c430':'#7fff7f'}">${Zv.toFixed(0)} ft</span></div>`;
-  html += `<div class="kvline"><span class="k">${label_zobs}</span><span class="v">${Zobs.toFixed(0)} ft</span></div>`;
-  if(m === 'manuel' && Zv < Zobs){
-    html += `<div class="banner-warn" style="margin-top:4px">⚠️ Zv (${Zv.toFixed(0)} ft) &lt; obstacle (${Zobs.toFixed(0)} ft) — l'avion passe <b>en dessous</b> du sommet !</div>`;
-  }
-  if(m === 'rtba' && marge_sol !== null){
-    html += `<div class="kvline"><span class="k">Hauteur vraie sol (Zv − Zterrain)</span><span class="v">${marge_sol.toFixed(0)} ft AGL</span></div>`;
-  }
-  html += `<div class="section-title">Marge réelle</div>`;
+  // ── Résultat principal en premier ──
   const label_marge_result = (m === 'rtba') ? 'Marge vraie sous le plancher (Zi − Zv)' : label_marge;
-  html += `<div class="verdict-box ${vClass}">${verdict}<span class="big">${marge.toFixed(0)} ft</span><span style="font-size:11px;opacity:0.8">${label_marge_result}</span></div>`;
-  if(dT_loc >= 15){
-    html += `<div class="banner-warn" style="margin-top:8px">⚠️ Écart ISA important (+${dT_loc.toFixed(0)}°C) — marge réelle nettement réduite par rapport à l'altimètre.</div>`;
+  html += `<div class="verdict-box ${vClass}" style="margin-bottom:12px">${verdict}<span class="big">${marge.toFixed(0)} ft</span><span style="font-size:11px;opacity:0.8">${label_marge_result}</span></div>`;
+  if(m === 'manuel' && Zv < Zobs){
+    html += `<div class="banner-warn" style="margin-bottom:8px">⚠️ Zv (${Zv.toFixed(0)} ft) &lt; obstacle (${Zobs.toFixed(0)} ft) — l'avion passe <b>en dessous</b> du sommet !</div>`;
   }
+  if(dT_loc >= 15){
+    html += `<div class="banner-warn" style="margin-bottom:8px">⚠️ Écart ISA important (+${dT_loc.toFixed(0)}°C) — marge réelle nettement réduite.</div>`;
+  }
+  // ── Détails intermédiaires ──
+  html += `<div class="section-title">Détail</div>`;
+  html += `<div class="kvline"><span class="k">${label_zi}</span><span class="v">${Zi.toFixed(0)} ft QNH</span></div>`;
+  html += `<div class="kvline"><span class="k">Altitude-pression (PA)</span><span class="v">${PA.toFixed(0)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">Écart ISA local</span><span class="v">${dT_loc>=0?'+':''}${dT_loc.toFixed(1)} °C</span></div>`;
+  html += `<div class="kvline"><span class="k">Correction Zv</span><span class="v ${corr>0?'warn':'ok'}">${corr>=0?'+':''}${corr.toFixed(0)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">Altitude vraie (Zv)</span><span class="v">${Zv.toFixed(0)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">${label_zobs}</span><span class="v">${Zobs.toFixed(0)} ft</span></div>`;
 
   ['p9_out_rtba','p9_out_afficher','p9_out_manuel'].forEach(id => document.getElementById(id).innerHTML = '');
   const outId = m === 'rtba' ? 'p9_out_rtba' : m === 'afficher' ? 'p9_out_afficher' : 'p9_out_manuel';
