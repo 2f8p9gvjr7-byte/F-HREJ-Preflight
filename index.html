@@ -333,8 +333,9 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   <fieldset>
     <legend>🎯 Mode de calcul</legend>
     <div class="runway-toggle" style="flex-direction:column;gap:6px">
-      <label style="border-radius:8px;padding:10px"><input type="radio" name="ZV_MODE" value="rtba" checked><span>Zone RTBA / ZR / ZIT</span></label>
-      <label style="border-radius:8px;padding:10px"><input type="radio" name="ZV_MODE" value="manuel"><span>Saisie manuelle (col, obstacle, etc.)</span></label>
+      <label style="border-radius:8px;padding:10px"><input type="radio" name="ZV_MODE" value="rtba" checked><span>🔴 Zone RTBA/ZR — Vérifier si je passe sous le plancher</span></label>
+      <label style="border-radius:8px;padding:10px"><input type="radio" name="ZV_MODE" value="afficher"><span>🎯 Altitude à afficher — Que mettre à l'altimètre</span></label>
+      <label style="border-radius:8px;padding:10px"><input type="radio" name="ZV_MODE" value="manuel"><span>✏️ Saisie manuelle — Zv pour franchir un obstacle</span></label>
     </div>
   </fieldset>
 
@@ -363,6 +364,39 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
     </div>
     <button class="btn" onclick="calcAll()">Calculer altitude vraie</button>
     <div id="p9_out_rtba" class="result"></div>
+  </div>
+
+  <!-- ═══ Mode Altitude à afficher ═══ -->
+  <div id="zv_afficher" class="hidden">
+    <fieldset>
+      <legend>🎯 Altitude à afficher à l'altimètre</legend>
+      <div class="row"><label>Type de limite</label>
+        <div class="runway-toggle" style="margin:0">
+          <label><input type="radio" name="ZV_LIMITE" value="plancher" checked onchange="calcAll()"><span>Plancher (passer en dessous)</span></label>
+          <label><input type="radio" name="ZV_LIMITE" value="plafond" onchange="calcAll()"><span>Plafond (passer en dessous)</span></label>
+        </div>
+      </div>
+      <div class="row"><label>Type d'altitude de la limite</label>
+        <div class="runway-toggle" style="margin:0">
+          <label><input type="radio" name="ZV_LIM_REF" value="msl" checked onchange="calcAll()"><span>MSL (ft QNH)</span></label>
+          <label><input type="radio" name="ZV_LIM_REF" value="agl" onchange="calcAll()"><span>AGL (ft sol)</span></label>
+        </div>
+      </div>
+      <div class="row" id="aff_lim_msl_row"><label id="aff_lim_label">Altitude de la limite (MSL)</label><input id="ZV_LIMITE_VAL" type="number" step="50" value="2500"><span class="unit">ft MSL</span></div>
+      <div class="row hidden" id="aff_lim_agl_row"><label>Limite en AGL</label><input id="ZV_LIMITE_AGL" type="number" step="50" value="800"><span class="unit">ft AGL</span></div>
+      <div class="row"><label>Altitude terrain (MSL)</label><input id="ZV_TERRAIN_AFF" type="number" step="50" value="1200"><span class="unit">ft MSL</span></div>
+      <div class="row"><label>Marge souhaitée</label><input id="ZV_MARGE_AFF" type="number" step="50" value="300"><span class="unit">ft</span></div>
+      <div class="row"><label>OAT à l'altitude de vol</label><input id="OAT_AFF" type="number" step="1" value="15"><span class="unit">°C</span></div>
+      <div class="row"><label>QNH</label><input id="QNH_AFF" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
+    </fieldset>
+    <div class="notes">
+      <b>Plancher</b> : zone SFC/AGL ou MSL — tu dois voler <b>en dessous</b> avec une marge de sécurité.<br>
+      <b>Plafond</b> : TMA ou espace contrôlé — tu dois rester <b>en dessous</b> du plafond avec une marge.<br>
+      En AGL : altitude limite MSL = terrain + AGL. La marge sol vérifie que c'est physiquement possible.<br>
+      <b>En hiver</b> (temps froid) : afficher <b>plus</b> que la limite − marge car Zv &lt; Zi.
+    </div>
+    <button class="btn" onclick="calcAll()">Calculer altitude à afficher</button>
+    <div id="p9_out_afficher" class="result"></div>
   </div>
 
   <!-- ═══ Mode Manuel ═══ -->
@@ -442,7 +476,9 @@ const FIELDS = ['LFG','LFD','LFAR',
   'OAT','ALT0','QNH','SLOPE',
   'ALTCOL','ALTCOL_PROG','DIST_COL','VIAS','VTYPE','CAP','TLEV','ZLEV','WDIR','WSPD','CHAIN','MARGE_MIN',
   'RH','TDEW0','RPM','OAT_ICE','WFACE','M_LDG',
-  'ZTERRAIN','ZI_RTBA','ZI_RTBA_AGL','QNH_RTBA','OAT_RTBA','MARGE_RTBA','OAT_ZV_MAN','QNH_ZV_MAN','ZI_MAN','FL_MAN','QNH_FL_MAN','ZOBS_MAN',
+  'ZTERRAIN','ZI_RTBA','ZI_RTBA_AGL','QNH_RTBA','OAT_RTBA','MARGE_RTBA',
+  'ZV_LIMITE_VAL','ZV_LIMITE_AGL','ZV_TERRAIN_AFF','ZV_MARGE_AFF','OAT_AFF','QNH_AFF',
+  'OAT_ZV_MAN','QNH_ZV_MAN','ZI_MAN','FL_MAN','QNH_FL_MAN','ZOBS_MAN',
   'OAT_TH','RH_TH','LF_LDG'];
 
 function syncVIAS(){
@@ -1124,7 +1160,15 @@ function updateZvModeUI(){
   const mode = document.querySelector('input[name="ZV_MODE"]:checked');
   const m = mode ? mode.value : 'rtba';
   document.getElementById('zv_rtba').classList.toggle('hidden', m !== 'rtba');
+  document.getElementById('zv_afficher').classList.toggle('hidden', m !== 'afficher');
   document.getElementById('zv_manuel').classList.toggle('hidden', m !== 'manuel');
+  // AGL/MSL toggle dans mode afficher
+  const limRef = document.querySelector('input[name="ZV_LIM_REF"]:checked');
+  const isAGLaff = limRef && limRef.value === 'agl';
+  const rowMSL = document.getElementById('aff_lim_msl_row');
+  const rowAGL = document.getElementById('aff_lim_agl_row');
+  if(rowMSL) rowMSL.classList.toggle('hidden', isAGLaff);
+  if(rowAGL) rowAGL.classList.toggle('hidden', !isAGLaff);
   // AGL/MSL toggle dans RTBA
   const floorEl = document.querySelector('input[name="ZV_FLOOR"]:checked');
   const isAGL = floorEl && floorEl.value === 'agl';
@@ -1139,6 +1183,69 @@ function calc9(){
   const m = mode ? mode.value : 'rtba';
 
   let OAT, QNH, Zi, Zobs, label_zi, label_zobs, label_marge;
+
+  if(m === 'afficher'){
+    const OAT_a   = v('OAT_AFF');
+    const QNH_a   = v('QNH_AFF');
+    const terrain = v('ZV_TERRAIN_AFF');
+    const marge_a = v('ZV_MARGE_AFF');
+    const isAGL_a = document.querySelector('input[name="ZV_LIM_REF"]:checked')?.value === 'agl';
+    const isPla   = document.querySelector('input[name="ZV_LIMITE"]:checked')?.value === 'plafond';
+    const lim_raw = isAGL_a ? terrain + v('ZV_LIMITE_AGL') : v('ZV_LIMITE_VAL');
+    const lim_label = isPla ? 'Plafond' : 'Plancher';
+    const Zv_cible = lim_raw - marge_a;
+    // Résolution itérative : Zi tel que Zi + corr(Zi) = Zv_cible
+    let Zi_it = Zv_cible;
+    for(let i=0; i<20; i++){
+      const PA_it   = Zi_it + (1013 - QNH_a) * 27;
+      const ISA_it  = 15 - 0.002 * PA_it;
+      const dT_it   = OAT_a - ISA_it;
+      const corr_it = 4 * (PA_it / 1000) * dT_it;
+      Zi_it = Zv_cible - corr_it;
+    }
+    const Zi_aff  = Math.round(Zi_it / 50) * 50;
+    const PA_fin  = Zi_aff + (1013 - QNH_a) * 27;
+    const ISA_fin = 15 - 0.002 * PA_fin;
+    const dT_fin  = OAT_a - ISA_fin;
+    const corr_fin = 4 * (PA_fin / 1000) * dT_fin;
+    const Zv_fin  = Zi_aff + corr_fin;
+    const marge_sol = Zi_aff - terrain;
+
+    let verdict, vClass;
+    if(Zi_aff <= terrain){
+      verdict = '❌ IMPOSSIBLE — altitude affichée sous le terrain !'; vClass = 'verdict-bad';
+    } else if(marge_sol < 300){
+      verdict = '❌ Marge sol insuffisante — contournement obligatoire'; vClass = 'verdict-bad';
+    } else if(marge_sol < 500){
+      verdict = '⚠️ Marge sol faible — vigilance'; vClass = 'verdict-warn';
+    } else {
+      verdict = '✅ Possible'; vClass = 'verdict-ok';
+    }
+
+    let html = '';
+    html += `<div class="section-title">Données</div>`;
+    html += `<div class="kvline"><span class="k">${lim_label} de la zone</span><span class="v">${lim_raw.toFixed(0)} ft MSL</span></div>`;
+    html += `<div class="kvline"><span class="k">Marge souhaitée sous le ${lim_label.toLowerCase()}</span><span class="v">${marge_a.toFixed(0)} ft</span></div>`;
+    html += `<div class="kvline"><span class="k">Zv cible (${lim_label} − marge)</span><span class="v">${Zv_cible.toFixed(0)} ft MSL</span></div>`;
+    html += `<div class="section-title">Correction thermique</div>`;
+    html += `<div class="kvline"><span class="k">Écart ISA local</span><span class="v">${dT_fin>=0?'+':''}${dT_fin.toFixed(1)} °C</span></div>`;
+    html += `<div class="kvline"><span class="k">Correction Zv</span><span class="v ${corr_fin>=0?'warn':'ok'}">${corr_fin>=0?'+':''}${corr_fin.toFixed(0)} ft</span></div>`;
+    html += `<div class="section-title">Résultat</div>`;
+    html += `<div class="verdict-box ${vClass}" style="margin-bottom:8px">`;
+    html += `<span style="font-size:13px">Afficher à l'altimètre</span>`;
+    html += `<span class="big">${Zi_aff.toFixed(0)} ft</span>`;
+    html += `<span style="font-size:11px;opacity:0.8">Zv réelle ≈ ${Zv_fin.toFixed(0)} ft — marge ${(lim_raw-Zv_fin).toFixed(0)} ft sous le ${lim_label.toLowerCase()}</span>`;
+    html += `</div>`;
+    html += `<div class="kvline"><span class="k">Altitude terrain</span><span class="v">${terrain.toFixed(0)} ft MSL</span></div>`;
+    html += `<div class="kvline"><span class="k">Marge sol (Zi affiché − terrain)</span><span class="v ${marge_sol<300?'warn':'ok'}">${marge_sol.toFixed(0)} ft AGL</span></div>`;
+    html += `<div class="verdict-box ${vClass}" style="margin-top:8px">${verdict}</div>`;
+    if(dT_fin <= -10){
+      html += `<div class="banner-warn" style="margin-top:8px">⚠️ Temps très froid — correction importante, afficher significativement plus que la limite − marge.</div>`;
+    }
+    ['p9_out_rtba','p9_out_afficher','p9_out_manuel'].forEach(id => document.getElementById(id).innerHTML = '');
+    document.getElementById('p9_out_afficher').innerHTML = html;
+    return;
+  }
 
   if(m === 'rtba'){
     OAT  = v('OAT_RTBA');
@@ -1189,7 +1296,7 @@ function calc9(){
       html += `<div class="banner-warn" style="margin-top:8px">⚠️ Correction Zv importante (+${corr.toFixed(0)} ft) — l'altimètre sous-estime significativement l'altitude réelle.</div>`;
     }
 
-    ['p9_out_rtba','p9_out_manuel'].forEach(id => document.getElementById(id).innerHTML = '');
+    ['p9_out_rtba','p9_out_afficher','p9_out_manuel'].forEach(id => document.getElementById(id).innerHTML = '');
     document.getElementById('p9_out_rtba').innerHTML = html;
     return;
   } else {
@@ -1235,7 +1342,7 @@ function calc9(){
       if(dT_fl <= -10){
         html += `<div class="banner-warn" style="margin-top:8px">⚠️ Temps très froid (${dT_fl.toFixed(0)}°C / ISA) — correction importante, l'avion vole significativement plus bas que le FL affiché.</div>`;
       }
-      ['p9_out_rtba','p9_out_manuel'].forEach(id => document.getElementById(id).innerHTML = '');
+      ['p9_out_rtba','p9_out_afficher','p9_out_manuel'].forEach(id => document.getElementById(id).innerHTML = '');
       document.getElementById('p9_out_manuel').innerHTML = html;
       return;
     }
@@ -1291,8 +1398,8 @@ function calc9(){
     html += `<div class="banner-warn" style="margin-top:8px">⚠️ Écart ISA important (+${dT_loc.toFixed(0)}°C) — marge réelle nettement réduite par rapport à l'altimètre.</div>`;
   }
 
-  ['p9_out_rtba','p9_out_manuel'].forEach(id => document.getElementById(id).innerHTML = '');
-  const outId = m === 'rtba' ? 'p9_out_rtba' : 'p9_out_manuel';
+  ['p9_out_rtba','p9_out_afficher','p9_out_manuel'].forEach(id => document.getElementById(id).innerHTML = '');
+  const outId = m === 'rtba' ? 'p9_out_rtba' : m === 'afficher' ? 'p9_out_afficher' : 'p9_out_manuel';
   document.getElementById(outId).innerHTML = html;
 }
 
