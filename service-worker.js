@@ -1,7 +1,7 @@
 // Service worker — DR400/160 F-HREJ Prévol
 // Fonctionnement hors-ligne après la première visite.
 
-const CACHE_NAME = 'fhrej-prevol-v33';
+const CACHE_NAME = 'fhrej-prevol-v34';
 const FILES_TO_CACHE = [
   './index.html',
   './manifest.json',
