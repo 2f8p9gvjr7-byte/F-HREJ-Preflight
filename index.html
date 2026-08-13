@@ -1165,10 +1165,10 @@ function updateZvModeUI(){
   // AGL/MSL toggle dans mode afficher
   const limRef = document.querySelector('input[name="ZV_LIM_REF"]:checked');
   const isAGLaff = limRef && limRef.value === 'agl';
-  const rowMSL = document.getElementById('aff_lim_msl_row');
-  const rowAGL = document.getElementById('aff_lim_agl_row');
-  if(rowMSL) rowMSL.classList.toggle('hidden', isAGLaff);
-  if(rowAGL) rowAGL.classList.toggle('hidden', !isAGLaff);
+  const rowAffMSL = document.getElementById('aff_lim_msl_row');
+  const rowAffAGL = document.getElementById('aff_lim_agl_row');
+  if(rowAffMSL) rowAffMSL.classList.toggle('hidden', isAGLaff);
+  if(rowAffAGL) rowAffAGL.classList.toggle('hidden', !isAGLaff);
   // AGL/MSL toggle dans RTBA
   const floorEl = document.querySelector('input[name="ZV_FLOOR"]:checked');
   const isAGL = floorEl && floorEl.value === 'agl';
@@ -1264,36 +1264,36 @@ function calc9(){
     label_zobs  = 'Altitude terrain en dessous';
     label_marge = `Marge sous limite opérationnelle (plancher ${Zi.toFixed(0)} − sécurité ${MARGE_RTBA} ft)`;
 
-    const PA      = Zi + (1013 - QNH) * 27;
-    const ISA_loc = 15 - 0.002 * PA;
-    const dT_loc  = OAT - ISA_loc;
-    const corr    = 4 * (PA / 1000) * dT_loc;
-    const Zv      = Zi + corr;
-    const marge_sol = Zv - Zobs;
-    const marge   = Zi_limite - Zv; // positif = sous la limite, négatif = infraction
+    const PA_rtba      = Zi + (1013 - QNH) * 27;
+    const ISA_loc_rtba = 15 - 0.002 * PA_rtba;
+    const dT_loc_rtba  = OAT - ISA_loc_rtba;
+    const corr_rtba    = 4 * (PA_rtba / 1000) * dT_loc_rtba;
+    const Zv_rtba      = Zi + corr_rtba;
+    const marge_sol_rtba = Zv_rtba - Zobs;
+    const marge_rtba   = Zi_limite - Zv_rtba;
 
     let verdict, vClass;
-    if(Zv > Zi)        { verdict = '❌ DÉPASSE LE PLANCHER — Infraction zone';      vClass = 'verdict-bad'; }
-    else if(marge < 0) { verdict = `❌ Dépasse la limite (plancher − ${MARGE_RTBA} ft)`; vClass = 'verdict-bad'; }
-    else if(marge < 100){ verdict = '⚠️ Très proche de la limite — vigilance';     vClass = 'verdict-warn'; }
-    else               { verdict = '✅ Vol sous la limite opérationnelle';           vClass = 'verdict-ok'; }
+    if(Zv_rtba > Zi)           { verdict = '❌ DÉPASSE LE PLANCHER — Infraction zone';      vClass = 'verdict-bad'; }
+    else if(marge_rtba < 0)    { verdict = `❌ Dépasse la limite (plancher − ${MARGE_RTBA} ft)`; vClass = 'verdict-bad'; }
+    else if(marge_rtba < 100)  { verdict = '⚠️ Très proche de la limite — vigilance';     vClass = 'verdict-warn'; }
+    else                       { verdict = '✅ Vol sous la limite opérationnelle';           vClass = 'verdict-ok'; }
 
     let html = '';
     html += `<div class="section-title">Calculs</div>`;
     html += `<div class="kvline"><span class="k">Température à l'altitude</span><span class="v">${OAT.toFixed(1)} °C</span></div>`;
-    html += `<div class="kvline"><span class="k">Altitude-pression (PA à Zi)</span><span class="v">${PA.toFixed(0)} ft</span></div>`;
-    html += `<div class="kvline"><span class="k">Écart ISA local</span><span class="v">${dT_loc>=0?'+':''}${dT_loc.toFixed(1)} °C</span></div>`;
-    html += `<div class="kvline"><span class="k">Correction Zv</span><span class="v ${corr>0?'warn':'ok'}">+${corr.toFixed(0)} ft</span></div>`;
+    html += `<div class="kvline"><span class="k">Altitude-pression (PA à Zi)</span><span class="v">${PA_rtba.toFixed(0)} ft</span></div>`;
+    html += `<div class="kvline"><span class="k">Écart ISA local</span><span class="v">${dT_loc_rtba>=0?'+':''}${dT_loc_rtba.toFixed(1)} °C</span></div>`;
+    html += `<div class="kvline"><span class="k">Correction Zv</span><span class="v ${corr_rtba>0?'warn':'ok'}">${corr_rtba>=0?'+':''}${corr_rtba.toFixed(0)} ft</span></div>`;
     html += `<div class="section-title">Résultats</div>`;
     html += `<div class="kvline"><span class="k">${label_zi}</span><span class="v">${Zi.toFixed(0)} ft QNH</span></div>`;
     html += `<div class="kvline"><span class="k">Limite opérationnelle (plancher − ${MARGE_RTBA} ft)</span><span class="v">${Zi_limite.toFixed(0)} ft QNH</span></div>`;
-    html += `<div class="kvline"><span class="k">Altitude vraie (Zv)</span><span class="v" style="font-size:16px">${Zv.toFixed(0)} ft</span></div>`;
+    html += `<div class="kvline"><span class="k">Altitude vraie (Zv)</span><span class="v" style="font-size:16px">${Zv_rtba.toFixed(0)} ft</span></div>`;
     html += `<div class="kvline"><span class="k">Altitude terrain en dessous</span><span class="v">${Zobs.toFixed(0)} ft</span></div>`;
-    html += `<div class="kvline"><span class="k">Hauteur vraie sol (Zv − Zterrain)</span><span class="v">${marge_sol.toFixed(0)} ft AGL</span></div>`;
+    html += `<div class="kvline"><span class="k">Hauteur vraie sol (Zv − Zterrain)</span><span class="v">${marge_sol_rtba.toFixed(0)} ft AGL</span></div>`;
     html += `<div class="section-title">Marge réelle</div>`;
-    html += `<div class="verdict-box ${vClass}">${verdict}<span class="big">${marge.toFixed(0)} ft</span><span style="font-size:11px;opacity:0.8">${label_marge}</span></div>`;
-    if(corr >= 50){
-      html += `<div class="banner-warn" style="margin-top:8px">⚠️ Correction Zv importante (+${corr.toFixed(0)} ft) — l'altimètre sous-estime significativement l'altitude réelle.</div>`;
+    html += `<div class="verdict-box ${vClass}">${verdict}<span class="big">${marge_rtba.toFixed(0)} ft</span><span style="font-size:11px;opacity:0.8">${label_marge}</span></div>`;
+    if(corr_rtba >= 50){
+      html += `<div class="banner-warn" style="margin-top:8px">⚠️ Correction Zv importante (+${corr_rtba.toFixed(0)} ft) — l'altimètre sous-estime significativement l'altitude réelle.</div>`;
     }
 
     ['p9_out_rtba','p9_out_afficher','p9_out_manuel'].forEach(id => document.getElementById(id).innerHTML = '');
@@ -1360,7 +1360,7 @@ function calc9(){
   // Pour RTBA : marge = Zi (plancher) − Zv (tu dois être EN DESSOUS du plancher)
   // Pour Manuel : marge = Zv − Zobs (tu dois être AU-DESSUS de l'obstacle)
   const marge = (m === 'rtba') ? Zi - Zv : Zv - Zobs;
-  const marge_sol = (m === 'rtba') ? Zv - Zobs : null; // hauteur vraie sol en RTBA
+  const marge_sol_man = (m === 'rtba') ? Zv - Zobs : null; // hauteur vraie sol en RTBA
 
   let verdict, vClass;
   if(m === 'rtba'){
