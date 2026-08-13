@@ -491,6 +491,11 @@ function saveAll(){
   if(ldg) localStorage.setItem('hrej_LDG', ldg.value);
   const vtype = document.getElementById('VTYPE');
   if(vtype) localStorage.setItem('hrej_VTYPE', vtype.value);
+  // Sauvegarder les radio buttons Zv
+  ['ZV_MODE','ZV_FLOOR','ZV_CALAGE','ZV_LIMITE','ZV_LIM_REF'].forEach(name => {
+    const el = document.querySelector(`input[name="${name}"]:checked`);
+    if(el) localStorage.setItem('hrej_'+name, el.value);
+  });
 }
 
 function loadAll(){
@@ -516,8 +521,17 @@ function loadAll(){
     const oatIce = document.getElementById('OAT_ICE');
     if(oat4 && oatIce) oatIce.value = oat4.value;
   }
+  // Restaurer les radio buttons Zv
+  ['ZV_MODE','ZV_FLOOR','ZV_CALAGE','ZV_LIMITE','ZV_LIM_REF'].forEach(name => {
+    const saved = localStorage.getItem('hrej_'+name);
+    if(saved){
+      const el = document.querySelector(`input[name="${name}"][value="${saved}"]`);
+      if(el) el.checked = true;
+    }
+  });
   updateIceModeUI();
   updateOatSyncUI();
+  updateZvModeUI();
 }
 
 function v(id){ return +document.getElementById(id).value || 0; }
