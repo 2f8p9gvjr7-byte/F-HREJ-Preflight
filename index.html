@@ -370,6 +370,12 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
           <label><input type="radio" name="ZV_LIMITE" value="plafond" onchange="calcAll()"><span>Plafond</span></label>
         </div>
       </div>
+      <div class="row"><label>Direction souhaitée</label>
+        <div class="runway-toggle" style="margin:0">
+          <label><input type="radio" name="ZV_DIRECTION" value="dessous" checked onchange="calcAll()"><span>Passer en dessous</span></label>
+          <label><input type="radio" name="ZV_DIRECTION" value="dessus" onchange="calcAll()"><span>Passer au-dessus</span></label>
+        </div>
+      </div>
       <div class="row"><label>Référence altitude</label>
         <div class="runway-toggle" style="margin:0">
           <label><input type="radio" name="ZV_LIM_REF" value="msl" checked onchange="calcAll()"><span>MSL (ft QNH)</span></label>
@@ -492,7 +498,7 @@ function saveAll(){
   const vtype = document.getElementById('VTYPE');
   if(vtype) localStorage.setItem('hrej_VTYPE', vtype.value);
   // Sauvegarder les radio buttons Zv
-  ['ZV_MODE','ZV_FLOOR','ZV_CALAGE','ZV_LIMITE','ZV_LIM_REF'].forEach(name => {
+  ['ZV_MODE','ZV_FLOOR','ZV_CALAGE','ZV_LIMITE','ZV_LIM_REF','ZV_DIRECTION'].forEach(name => {
     const el = document.querySelector(`input[name="${name}"]:checked`);
     if(el) localStorage.setItem('hrej_'+name, el.value);
   });
@@ -522,7 +528,7 @@ function loadAll(){
     if(oat4 && oatIce) oatIce.value = oat4.value;
   }
   // Restaurer les radio buttons Zv
-  ['ZV_MODE','ZV_FLOOR','ZV_CALAGE','ZV_LIMITE','ZV_LIM_REF'].forEach(name => {
+  ['ZV_MODE','ZV_FLOOR','ZV_CALAGE','ZV_LIMITE','ZV_LIM_REF','ZV_DIRECTION'].forEach(name => {
     const saved = localStorage.getItem('hrej_'+name);
     if(saved){
       const el = document.querySelector(`input[name="${name}"][value="${saved}"]`);
@@ -1185,9 +1191,11 @@ function calc9(){
     const marge_a = v('ZV_MARGE_AFF');
     const isAGL_a = document.querySelector('input[name="ZV_LIM_REF"]:checked')?.value === 'agl';
     const isPla   = document.querySelector('input[name="ZV_LIMITE"]:checked')?.value === 'plafond';
+    const isAbove = document.querySelector('input[name="ZV_DIRECTION"]:checked')?.value === 'dessus';
     const lim_raw = isAGL_a ? terrain + v('ZV_LIMITE_AGL') : v('ZV_LIMITE_VAL');
     const lim_label = isPla ? 'Plafond' : 'Plancher';
-    const Zv_cible = lim_raw - marge_a;
+    const dir_label = isAbove ? 'au-dessus' : 'en dessous';
+    const Zv_cible = isAbove ? lim_raw + marge_a : lim_raw - marge_a;
     // Résolution itérative : Zi tel que Zi + corr(Zi) = Zv_cible
     let Zi_it = Zv_cible;
     for(let i=0; i<20; i++){
@@ -1205,9 +1213,13 @@ function calc9(){
     const Zv_fin  = Zi_aff + corr_fin;
     const marge_sol = Zi_aff - terrain;
 
+    const marge_reelle_check = isAbove ? ((Zi_aff + 4*((Zi_aff+(1013-QNH_a)*27)/1000)*(OAT_a-(15-0.002*(Zi_aff+(1013-QNH_a)*27)))) - lim_raw)
+                                        : (lim_raw - (Zi_aff + 4*((Zi_aff+(1013-QNH_a)*27)/1000)*(OAT_a-(15-0.002*(Zi_aff+(1013-QNH_a)*27)))));
     let verdict, vClass;
     if(Zi_aff <= terrain){
       verdict = '❌ IMPOSSIBLE — altitude affichée sous le terrain !'; vClass = 'verdict-bad';
+    } else if(marge_reelle_check < 0){
+      verdict = `❌ Arrondi 50 ft fait passer ${dir_label==='au-dessus'?'sous':'au-delà de'} la limite — resaisir manuellement`; vClass = 'verdict-bad';
     } else if(marge_sol < 300){
       verdict = '❌ Marge sol insuffisante — contournement obligatoire'; vClass = 'verdict-bad';
     } else if(marge_sol < 500){
@@ -1224,16 +1236,18 @@ function calc9(){
     html += `<span style="font-size:12px">${verdict}</span>`;
     html += `</div>`;
     if(dT_fin <= -10){
-      html += `<div class="banner-warn" style="margin-bottom:8px">⚠️ Temps très froid — afficher plus que limite − marge car Zv &lt; Zi.</div>`;
+      html += `<div class="banner-warn" style="margin-bottom:8px">⚠️ Temps très froid — l'altitude vraie s'écarte fortement de l'altitude affichée, vérifiez la marge réelle ci-dessous.</div>`;
     }
     // ── Détails intermédiaires ──
+    const marge_reelle = isAbove ? (Zv_fin - lim_raw) : (lim_raw - Zv_fin);
     html += `<div class="section-title">Détail</div>`;
     html += `<div class="kvline"><span class="k">${lim_label} de la zone</span><span class="v">${lim_raw.toFixed(0)} ft MSL</span></div>`;
+    html += `<div class="kvline"><span class="k">Direction souhaitée</span><span class="v">Passer ${dir_label}</span></div>`;
     html += `<div class="kvline"><span class="k">Marge souhaitée</span><span class="v">${marge_a.toFixed(0)} ft</span></div>`;
-    html += `<div class="kvline"><span class="k">Zv cible (${lim_label} − marge)</span><span class="v">${Zv_cible.toFixed(0)} ft MSL</span></div>`;
+    html += `<div class="kvline"><span class="k">Zv cible (${lim_label} ${isAbove?'+':'−'} marge)</span><span class="v">${Zv_cible.toFixed(0)} ft MSL</span></div>`;
     html += `<div class="kvline"><span class="k">Écart ISA</span><span class="v">${dT_fin>=0?'+':''}${dT_fin.toFixed(1)} °C</span></div>`;
     html += `<div class="kvline"><span class="k">Correction Zv</span><span class="v ${corr_fin>=0?'warn':'ok'}">${corr_fin>=0?'+':''}${corr_fin.toFixed(0)} ft</span></div>`;
-    html += `<div class="kvline"><span class="k">Zv réelle estimée</span><span class="v">${Zv_fin.toFixed(0)} ft — marge ${(lim_raw-Zv_fin).toFixed(0)} ft sous le ${lim_label.toLowerCase()}</span></div>`;
+    html += `<div class="kvline"><span class="k">Zv réelle estimée</span><span class="v">${Zv_fin.toFixed(0)} ft — marge ${marge_reelle.toFixed(0)} ft ${dir_label} le ${lim_label.toLowerCase()}</span></div>`;
     html += `<div class="kvline"><span class="k">Marge sol (Zi − terrain ${terrain.toFixed(0)} ft)</span><span class="v ${marge_sol<300?'warn':'ok'}">${marge_sol.toFixed(0)} ft AGL</span></div>`;
     ['p9_out_rtba','p9_out_afficher','p9_out_manuel'].forEach(id => document.getElementById(id).innerHTML = '');
     document.getElementById('p9_out_afficher').innerHTML = html;
