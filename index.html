@@ -331,86 +331,45 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 <!-- ONGLET 9 : Altitude vraie (Zv) -->
 <div id="p9" class="page">
   <fieldset>
-    <legend>🎯 Mode de calcul</legend>
-    <div class="runway-toggle" style="flex-direction:column;gap:6px">
-      <label style="border-radius:8px;padding:10px"><input type="radio" name="ZV_MODE" value="rtba" checked><span>🔴 Zone RTBA/ZR — Vérifier si je passe sous le plancher</span></label>
-      <label style="border-radius:8px;padding:10px"><input type="radio" name="ZV_MODE" value="afficher"><span>🎯 Altitude à afficher — Que mettre à l'altimètre</span></label>
-      <label style="border-radius:8px;padding:10px"><input type="radio" name="ZV_MODE" value="manuel"><span>✏️ Saisie manuelle — Zv pour franchir un obstacle</span></label>
+    <legend>🚧 Contrainte de zone (TMA / RTBA / ZR...) — QNH direct, pas de correction thermique</legend>
+    <div class="row"><label>Cette contrainte s'applique</label>
+      <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="ZONE_ACTIVE" checked onchange="updateZvUI(); calcAll()" style="width:20px;height:20px"> <span>Oui</span></label>
+    </div>
+    <div id="zone_fields">
+      <div class="row"><label>Référence</label>
+        <div class="runway-toggle" style="margin:0">
+          <label><input type="radio" name="ZONE_REF" value="msl" checked onchange="updateZvUI(); calcAll()"><span>MSL (ft QNH)</span></label>
+          <label><input type="radio" name="ZONE_REF" value="agl" onchange="updateZvUI(); calcAll()"><span>AGL (ft sol)</span></label>
+        </div>
+      </div>
+      <div class="row" id="zone_msl_row"><label>Altitude de la limite (lue sur la carte)</label><input id="ZONE_LIMITE" type="number" step="50" value="2500"><span class="unit">ft MSL</span></div>
+      <div class="row hidden" id="zone_agl_row"><label>Altitude de la limite (lue sur la carte)</label><input id="ZONE_LIMITE_AGL" type="number" step="50" value="800"><span class="unit">ft AGL</span></div>
+      <div class="row" id="zone_terrain_row" style="display:none"><label>Terrain sous la zone (IGN)</label><input id="ZONE_TERRAIN" type="number" step="50" value="1200"><span class="unit">ft MSL</span></div>
+      <div class="row"><label>Direction souhaitée</label>
+        <div class="runway-toggle" style="margin:0">
+          <label><input type="radio" name="ZONE_DIRECTION" value="dessous" checked onchange="calcAll()"><span>Rester en dessous</span></label>
+          <label><input type="radio" name="ZONE_DIRECTION" value="dessus" onchange="calcAll()"><span>Rester au-dessus</span></label>
+        </div>
+      </div>
+      <div class="row"><label>Marge souhaitée</label><input id="ZONE_MARGE" type="number" step="50" value="500"><span class="unit">ft</span></div>
     </div>
   </fieldset>
 
-  <!-- ═══ Mode RTBA/ZR ═══ -->
-  <div id="zv_rtba">
-    <fieldset>
-      <legend>📋 Zone RTBA / ZR — Données</legend>
-      <div class="row"><label>QNH <span style="font-size:10px;color:var(--text-dim)">(auto onglet 4, modifiable)</span></label><input id="QNH_RTBA" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
-      <div class="row"><label>OAT dans la zone</label><input id="OAT_RTBA" type="number" step="1" value="25"><span class="unit">°C</span></div>
-      <div class="row"><label>Plancher</label>
-        <div class="runway-toggle" style="margin:0">
-          <label><input type="radio" name="ZV_FLOOR" value="msl" checked><span>MSL (ft QNH)</span></label>
-          <label><input type="radio" name="ZV_FLOOR" value="agl"><span>AGL (ft sol)</span></label>
-        </div>
-      </div>
-      <div class="row" id="zv_floor_msl_row"><label>Plancher (lu sur la carte)</label><input id="ZI_RTBA" type="number" step="50" value="2500"><span class="unit">ft MSL</span></div>
-      <div class="row hidden" id="zv_floor_agl_row"><label>Plancher (lu sur la carte)</label><input id="ZI_RTBA_AGL" type="number" step="50" value="800"><span class="unit">ft AGL</span></div>
-      <div class="row"><label>Terrain sous la zone (IGN / onglet 4)</label><input id="ZTERRAIN" type="number" step="50" value="1187"><span class="unit">ft MSL</span></div>
-      <div class="row"><label>Marge de sécurité</label><input id="MARGE_RTBA" type="number" step="50" value="300"><span class="unit">ft</span></div>
-    </fieldset>
-    <button class="btn" onclick="calcAll()">Calculer</button>
-    <div id="p9_out_rtba" class="result"></div>
-  </div>
+  <fieldset>
+    <legend>⛰️ Contrainte d'obstacle physique — altitude vraie, correction thermique</legend>
+    <div class="row"><label>Cette contrainte s'applique</label>
+      <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="OBS_ACTIVE" checked onchange="updateZvUI(); calcAll()" style="width:20px;height:20px"> <span>Oui</span></label>
+    </div>
+    <div id="obs_fields">
+      <div class="row"><label>Altitude de l'obstacle (IGN)</label><input id="OBS_ALTITUDE" type="number" step="10" value="1800"><span class="unit">ft MSL</span></div>
+      <div class="row"><label>Marge au-dessus de l'obstacle</label><input id="OBS_MARGE" type="number" step="50" value="500"><span class="unit">ft</span></div>
+      <div class="row"><label>OAT <span style="font-size:10px;color:var(--text-dim)">(auto onglet 4, modifiable)</span></label><input id="OBS_OAT" type="number" step="1" value="15"><span class="unit">°C</span></div>
+      <div class="row"><label>QNH <span style="font-size:10px;color:var(--text-dim)">(auto onglet 4, modifiable)</span></label><input id="OBS_QNH" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
+    </div>
+  </fieldset>
 
-  <!-- ═══ Mode Altitude à afficher ═══ -->
-  <div id="zv_afficher" class="hidden">
-    <fieldset>
-      <legend>🎯 Altitude à afficher — Données</legend>
-      <div class="row"><label>Type de limite</label>
-        <div class="runway-toggle" style="margin:0">
-          <label><input type="radio" name="ZV_LIMITE" value="plancher" checked onchange="calcAll()"><span>Plancher</span></label>
-          <label><input type="radio" name="ZV_LIMITE" value="plafond" onchange="calcAll()"><span>Plafond</span></label>
-        </div>
-      </div>
-      <div class="row"><label>Direction souhaitée</label>
-        <div class="runway-toggle" style="margin:0">
-          <label><input type="radio" name="ZV_DIRECTION" value="dessous" checked onchange="calcAll()"><span>Passer en dessous</span></label>
-          <label><input type="radio" name="ZV_DIRECTION" value="dessus" onchange="calcAll()"><span>Passer au-dessus</span></label>
-        </div>
-      </div>
-      <div class="row"><label>Référence altitude</label>
-        <div class="runway-toggle" style="margin:0">
-          <label><input type="radio" name="ZV_LIM_REF" value="msl" checked onchange="calcAll()"><span>MSL (ft QNH)</span></label>
-          <label><input type="radio" name="ZV_LIM_REF" value="agl" onchange="calcAll()"><span>AGL (ft sol)</span></label>
-        </div>
-      </div>
-      <div class="row" id="aff_lim_msl_row"><label id="aff_lim_label">Altitude de la limite</label><input id="ZV_LIMITE_VAL" type="number" step="50" value="2500"><span class="unit">ft MSL</span></div>
-      <div class="row hidden" id="aff_lim_agl_row"><label>Limite</label><input id="ZV_LIMITE_AGL" type="number" step="50" value="800"><span class="unit">ft AGL</span></div>
-      <div class="row"><label>Terrain (MSL)</label><input id="ZV_TERRAIN_AFF" type="number" step="50" value="1200"><span class="unit">ft MSL</span></div>
-      <div class="row"><label>Marge souhaitée</label><input id="ZV_MARGE_AFF" type="number" step="50" value="300"><span class="unit">ft</span></div>
-      <div class="row"><label>OAT</label><input id="OAT_AFF" type="number" step="1" value="15"><span class="unit">°C</span></div>
-      <div class="row"><label>QNH</label><input id="QNH_AFF" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
-    </fieldset>
-    <button class="btn" onclick="calcAll()">Calculer</button>
-    <div id="p9_out_afficher" class="result"></div>
-  </div>
-
-  <!-- ═══ Mode Manuel ═══ -->
-  <div id="zv_manuel" class="hidden">
-    <fieldset>
-      <legend>✏️ Saisie manuelle — Données</legend>
-      <div class="row"><label>Calage</label>
-        <label style="margin-right:12px"><input type="radio" name="ZV_CALAGE" value="qnh" checked onchange="toggleCalage()"> QNH</label>
-        <label><input type="radio" name="ZV_CALAGE" value="fl" onchange="toggleCalage()"> FL (1013)</label>
-      </div>
-      <div class="row"><label>OAT</label><input id="OAT_ZV_MAN" type="number" step="1" value="25"><span class="unit">°C</span></div>
-      <div class="row" id="row_qnh_man"><label>QNH</label><input id="QNH_ZV_MAN" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
-      <div class="row" id="row_fl_man" style="display:none"><label>Niveau de vol (FL)</label><input id="FL_MAN" type="number" step="5" value="65" min="10" max="195"><span class="unit">× 100 ft</span></div>
-      <div class="row" id="row_qnh_fl_man" style="display:none"><label>QNH du jour</label><input id="QNH_FL_MAN" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
-      <div class="row" id="row_zi_man"><label id="label_zi_man">Altitude affichée (Zi)</label><input id="ZI_MAN" type="number" step="50" value="3500"><span class="unit" id="unit_zi_man">ft</span></div>
-      <div class="row"><label>Altitude sommet / obstacle</label><input id="ZOBS_MAN" type="number" step="50" value="2497"><span class="unit">ft MSL</span></div>
-    </fieldset>
-    <button class="btn" onclick="calcAll()">Calculer</button>
-    <div id="p9_out_manuel" class="result"></div>
-  </div>
+  <button class="btn" onclick="calcAll()">Calculer l'altitude à afficher</button>
+  <div id="p9_out" class="result"></div>
 
   <div class="notes" style="margin-top:8px">
     <b>Formule :</b> PA = Zi + (1013 − QNH) × 27 · Zv = Zi + 4 × (PA/1000) × ΔT_ISA_local ·
@@ -462,9 +421,8 @@ const FIELDS = ['LFG','LFD','LFAR',
   'OAT','ALT0','QNH','SLOPE',
   'ALTCOL','ALTCOL_PROG','DIST_COL','VIAS','VTYPE','CAP','TLEV','ZLEV','WDIR','WSPD','CHAIN','MARGE_MIN',
   'RH','TDEW0','RPM','OAT_ICE','WFACE','M_LDG',
-  'ZTERRAIN','ZI_RTBA','ZI_RTBA_AGL','QNH_RTBA','OAT_RTBA','MARGE_RTBA',
-  'ZV_LIMITE_VAL','ZV_LIMITE_AGL','ZV_TERRAIN_AFF','ZV_MARGE_AFF','OAT_AFF','QNH_AFF',
-  'OAT_ZV_MAN','QNH_ZV_MAN','ZI_MAN','FL_MAN','QNH_FL_MAN','ZOBS_MAN',
+  'ZONE_LIMITE','ZONE_LIMITE_AGL','ZONE_TERRAIN','ZONE_MARGE',
+  'OBS_ALTITUDE','OBS_MARGE','OBS_OAT','OBS_QNH',
   'OAT_TH','RH_TH','LF_LDG'];
 
 function syncVIAS(){
@@ -498,9 +456,13 @@ function saveAll(){
   const vtype = document.getElementById('VTYPE');
   if(vtype) localStorage.setItem('hrej_VTYPE', vtype.value);
   // Sauvegarder les radio buttons Zv
-  ['ZV_MODE','ZV_FLOOR','ZV_CALAGE','ZV_LIMITE','ZV_LIM_REF','ZV_DIRECTION'].forEach(name => {
+  ['ZONE_REF','ZONE_DIRECTION'].forEach(name => {
     const el = document.querySelector(`input[name="${name}"]:checked`);
     if(el) localStorage.setItem('hrej_'+name, el.value);
+  });
+  ['ZONE_ACTIVE','OBS_ACTIVE'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) localStorage.setItem('hrej_'+id, el.checked ? '1' : '0');
   });
 }
 
@@ -528,16 +490,20 @@ function loadAll(){
     if(oat4 && oatIce) oatIce.value = oat4.value;
   }
   // Restaurer les radio buttons Zv
-  ['ZV_MODE','ZV_FLOOR','ZV_CALAGE','ZV_LIMITE','ZV_LIM_REF','ZV_DIRECTION'].forEach(name => {
+  ['ZONE_REF','ZONE_DIRECTION'].forEach(name => {
     const saved = localStorage.getItem('hrej_'+name);
     if(saved){
       const el = document.querySelector(`input[name="${name}"][value="${saved}"]`);
       if(el) el.checked = true;
     }
   });
+  ['ZONE_ACTIVE','OBS_ACTIVE'].forEach(id => {
+    const saved = localStorage.getItem('hrej_'+id);
+    if(saved !== null){ const el = document.getElementById(id); if(el) el.checked = saved === '1'; }
+  });
   updateIceModeUI();
   updateOatSyncUI();
-  updateZvModeUI();
+  updateZvUI();
 }
 
 function v(id){ return +document.getElementById(id).value || 0; }
@@ -1148,259 +1114,105 @@ function calc8(){
 // ============================================================
 // ONGLET 9 — Altitude vraie (Zv) — 3 modes
 // ============================================================
-function toggleCalage(){
-  const isFL = document.querySelector('input[name="ZV_CALAGE"]:checked')?.value === 'fl';
-  document.getElementById('row_qnh_man').style.display    = isFL ? 'none' : '';
-  document.getElementById('row_fl_man').style.display     = isFL ? '' : 'none';
-  document.getElementById('row_qnh_fl_man').style.display = isFL ? '' : 'none';
-  document.getElementById('row_zi_man').style.display     = isFL ? 'none' : '';
-  calcAll();
-}
-function updateZvModeUI(){
-  const mode = document.querySelector('input[name="ZV_MODE"]:checked');
-  const m = mode ? mode.value : 'rtba';
-  document.getElementById('zv_rtba').classList.toggle('hidden', m !== 'rtba');
-  document.getElementById('zv_afficher').classList.toggle('hidden', m !== 'afficher');
-  document.getElementById('zv_manuel').classList.toggle('hidden', m !== 'manuel');
-  // AGL/MSL toggle dans mode afficher
-  const limRef = document.querySelector('input[name="ZV_LIM_REF"]:checked');
-  const isAGLaff = limRef && limRef.value === 'agl';
-  const rowAffMSL = document.getElementById('aff_lim_msl_row');
-  const rowAffAGL = document.getElementById('aff_lim_agl_row');
-  if(rowAffMSL) rowAffMSL.classList.toggle('hidden', isAGLaff);
-  if(rowAffAGL) rowAffAGL.classList.toggle('hidden', !isAGLaff);
-  // AGL/MSL toggle dans RTBA
-  const floorEl = document.querySelector('input[name="ZV_FLOOR"]:checked');
-  const isAGL = floorEl && floorEl.value === 'agl';
-  const rowMSL = document.getElementById('zv_floor_msl_row');
-  const rowAGL = document.getElementById('zv_floor_agl_row');
-  if(rowMSL) rowMSL.classList.toggle('hidden', isAGL);
-  if(rowAGL) rowAGL.classList.toggle('hidden', !isAGL);
+function updateZvUI(){
+  const zoneActive = document.getElementById('ZONE_ACTIVE').checked;
+  const obsActive = document.getElementById('OBS_ACTIVE').checked;
+  document.getElementById('zone_fields').classList.toggle('hidden', !zoneActive);
+  document.getElementById('obs_fields').classList.toggle('hidden', !obsActive);
+  const isAGL = document.querySelector('input[name="ZONE_REF"]:checked')?.value === 'agl';
+  document.getElementById('zone_msl_row').classList.toggle('hidden', isAGL);
+  document.getElementById('zone_agl_row').classList.toggle('hidden', !isAGL);
+  document.getElementById('zone_terrain_row').style.display = isAGL ? '' : 'none';
 }
 
+// Résout Zi (arrondi) tel que Zv(Zi) = target, par la même méthode itérative
+// roundMode: 'up' (ceil, pour garantir de dégager un obstacle) ou 'down' (floor, pour garantir de rester sous un plafond)
+function resolveZi(target, OAT, QNH, roundMode){
+  let Zi_it = target;
+  for(let i=0; i<20; i++){
+    const PA_it  = Zi_it + (1013 - QNH) * 27;
+    const ISA_it = 15 - 0.002 * PA_it;
+    const dT_it  = OAT - ISA_it;
+    const corr_it = 4 * (PA_it / 1000) * dT_it;
+    Zi_it = target - corr_it;
+  }
+  return roundMode === 'up' ? Math.ceil(Zi_it / 50) * 50 : Math.floor(Zi_it / 50) * 50;
+}
+
+// ============================================================
+// ONGLET 9 — Altitude vraie (Zv) — écran unique
+// Contrainte de zone (QNH direct) + contrainte d'obstacle (altitude vraie, corrigée)
+// chacune activable/désactivable indépendamment
+// ============================================================
 function calc9(){
-  const mode = document.querySelector('input[name="ZV_MODE"]:checked');
-  const m = mode ? mode.value : 'rtba';
+  const zoneActive = document.getElementById('ZONE_ACTIVE').checked;
+  const obsActive = document.getElementById('OBS_ACTIVE').checked;
 
-  let OAT, QNH, Zi, Zobs, label_zi, label_zobs, label_marge;
-
-  if(m === 'afficher'){
-    const OAT_a   = v('OAT_AFF');
-    const QNH_a   = v('QNH_AFF');
-    const terrain = v('ZV_TERRAIN_AFF');
-    const marge_a = v('ZV_MARGE_AFF');
-    const isAGL_a = document.querySelector('input[name="ZV_LIM_REF"]:checked')?.value === 'agl';
-    const isPla   = document.querySelector('input[name="ZV_LIMITE"]:checked')?.value === 'plafond';
-    const isAbove = document.querySelector('input[name="ZV_DIRECTION"]:checked')?.value === 'dessus';
-    const lim_raw = isAGL_a ? terrain + v('ZV_LIMITE_AGL') : v('ZV_LIMITE_VAL');
-    const lim_label = isPla ? 'Plafond' : 'Plancher';
-    const dir_label = isAbove ? 'au-dessus' : 'en dessous';
-    const Zv_cible = isAbove ? lim_raw + marge_a : lim_raw - marge_a;
-    // Résolution itérative : Zi tel que Zi + corr(Zi) = Zv_cible
-    let Zi_it = Zv_cible;
-    for(let i=0; i<20; i++){
-      const PA_it   = Zi_it + (1013 - QNH_a) * 27;
-      const ISA_it  = 15 - 0.002 * PA_it;
-      const dT_it   = OAT_a - ISA_it;
-      const corr_it = 4 * (PA_it / 1000) * dT_it;
-      Zi_it = Zv_cible - corr_it;
-    }
-    const Zi_aff  = Math.round(Zi_it / 50) * 50;
-    const PA_fin  = Zi_aff + (1013 - QNH_a) * 27;
-    const ISA_fin = 15 - 0.002 * PA_fin;
-    const dT_fin  = OAT_a - ISA_fin;
-    const corr_fin = 4 * (PA_fin / 1000) * dT_fin;
-    const Zv_fin  = Zi_aff + corr_fin;
-    const marge_sol = Zi_aff - terrain;
-
-    const marge_reelle_check = isAbove ? ((Zi_aff + 4*((Zi_aff+(1013-QNH_a)*27)/1000)*(OAT_a-(15-0.002*(Zi_aff+(1013-QNH_a)*27)))) - lim_raw)
-                                        : (lim_raw - (Zi_aff + 4*((Zi_aff+(1013-QNH_a)*27)/1000)*(OAT_a-(15-0.002*(Zi_aff+(1013-QNH_a)*27)))));
-    let verdict, vClass;
-    if(Zi_aff <= terrain){
-      verdict = '❌ IMPOSSIBLE — altitude affichée sous le terrain !'; vClass = 'verdict-bad';
-    } else if(marge_reelle_check < 0){
-      verdict = `❌ Arrondi 50 ft fait passer ${dir_label==='au-dessus'?'sous':'au-delà de'} la limite — resaisir manuellement`; vClass = 'verdict-bad';
-    } else if(marge_sol < 300){
-      verdict = '❌ Marge sol insuffisante — contournement obligatoire'; vClass = 'verdict-bad';
-    } else if(marge_sol < 500){
-      verdict = '⚠️ Marge sol faible — vigilance'; vClass = 'verdict-warn';
-    } else {
-      verdict = '✅ Possible'; vClass = 'verdict-ok';
-    }
-
-    let html = '';
-    // ── Résultat principal en premier ──
-    html += `<div class="verdict-box ${vClass}" style="margin-bottom:12px">`;
-    html += `<span style="font-size:13px">Afficher à l'altimètre</span>`;
-    html += `<span class="big">${Zi_aff.toFixed(0)} ft</span>`;
-    html += `<span style="font-size:12px">${verdict}</span>`;
-    html += `</div>`;
-    if(dT_fin <= -10){
-      html += `<div class="banner-warn" style="margin-bottom:8px">⚠️ Temps très froid — l'altitude vraie s'écarte fortement de l'altitude affichée, vérifiez la marge réelle ci-dessous.</div>`;
-    }
-    // ── Détails intermédiaires ──
-    const marge_reelle = isAbove ? (Zv_fin - lim_raw) : (lim_raw - Zv_fin);
-    html += `<div class="section-title">Détail</div>`;
-    html += `<div class="kvline"><span class="k">${lim_label} de la zone</span><span class="v">${lim_raw.toFixed(0)} ft MSL</span></div>`;
-    html += `<div class="kvline"><span class="k">Direction souhaitée</span><span class="v">Passer ${dir_label}</span></div>`;
-    html += `<div class="kvline"><span class="k">Marge souhaitée</span><span class="v">${marge_a.toFixed(0)} ft</span></div>`;
-    html += `<div class="kvline"><span class="k">Zv cible (${lim_label} ${isAbove?'+':'−'} marge)</span><span class="v">${Zv_cible.toFixed(0)} ft MSL</span></div>`;
-    html += `<div class="kvline"><span class="k">Écart ISA</span><span class="v">${dT_fin>=0?'+':''}${dT_fin.toFixed(1)} °C</span></div>`;
-    html += `<div class="kvline"><span class="k">Correction Zv</span><span class="v ${corr_fin>=0?'warn':'ok'}">${corr_fin>=0?'+':''}${corr_fin.toFixed(0)} ft</span></div>`;
-    html += `<div class="kvline"><span class="k">Zv réelle estimée</span><span class="v">${Zv_fin.toFixed(0)} ft — marge ${marge_reelle.toFixed(0)} ft ${dir_label} le ${lim_label.toLowerCase()}</span></div>`;
-    html += `<div class="kvline"><span class="k">Marge sol (Zi − terrain ${terrain.toFixed(0)} ft)</span><span class="v ${marge_sol<300?'warn':'ok'}">${marge_sol.toFixed(0)} ft AGL</span></div>`;
-    ['p9_out_rtba','p9_out_afficher','p9_out_manuel'].forEach(id => document.getElementById(id).innerHTML = '');
-    document.getElementById('p9_out_afficher').innerHTML = html;
+  if(!zoneActive && !obsActive){
+    document.getElementById('p9_out').innerHTML = `<div class="banner-warn">⚠️ Activez au moins une contrainte (zone ou obstacle) pour calculer.</div>`;
     return;
   }
 
-  if(m === 'rtba'){
-    OAT  = v('OAT_RTBA');
-    QNH  = v('QNH_RTBA');
-    Zobs = v('ZTERRAIN');
-    const MARGE_RTBA = v('MARGE_RTBA') || 0;
-    const floorEl = document.querySelector('input[name="ZV_FLOOR"]:checked');
-    const isAGL = floorEl && floorEl.value === 'agl';
-    if(isAGL){
-      Zi = Zobs + v('ZI_RTBA_AGL');
-    } else {
-      Zi = v('ZI_RTBA');
-    }
-    const Zi_limite = Zi - MARGE_RTBA; // limite opérationnelle = plancher − marge
-    label_zi    = isAGL ? `Plancher zone (${v('ZI_RTBA_AGL').toFixed(0)} ft AGL → ${Zi.toFixed(0)} ft MSL)` : 'Plancher zone RTBA/ZR (Zi MSL)';
-    label_zobs  = 'Altitude terrain en dessous';
-    label_marge = `Marge sous limite opérationnelle (plancher ${Zi.toFixed(0)} − sécurité ${MARGE_RTBA} ft)`;
-
-    const PA_rtba      = Zi + (1013 - QNH) * 27;
-    const ISA_loc_rtba = 15 - 0.002 * PA_rtba;
-    const dT_loc_rtba  = OAT - ISA_loc_rtba;
-    const corr_rtba    = 4 * (PA_rtba / 1000) * dT_loc_rtba;
-    const Zv_rtba      = Zi + corr_rtba;
-    const marge_sol_rtba = Zv_rtba - Zobs;
-    const marge_rtba   = Zi_limite - Zv_rtba;
-
-    let verdict, vClass;
-    if(Zv_rtba > Zi)           { verdict = '❌ DÉPASSE LE PLANCHER — Infraction zone';      vClass = 'verdict-bad'; }
-    else if(marge_rtba < 0)    { verdict = `❌ Dépasse la limite (plancher − ${MARGE_RTBA} ft)`; vClass = 'verdict-bad'; }
-    else if(marge_rtba < 100)  { verdict = '⚠️ Très proche de la limite — vigilance';     vClass = 'verdict-warn'; }
-    else                       { verdict = '✅ Vol sous la limite opérationnelle';           vClass = 'verdict-ok'; }
-
-    let html = '';
-    // ── Résultat principal en premier ──
-    html += `<div class="verdict-box ${vClass}" style="margin-bottom:12px">${verdict}<span class="big">${marge_rtba.toFixed(0)} ft</span><span style="font-size:11px;opacity:0.8">${label_marge}</span></div>`;
-    if(corr_rtba >= 50){
-      html += `<div class="banner-warn" style="margin-bottom:8px">⚠️ Correction Zv importante (+${corr_rtba.toFixed(0)} ft) — l'altimètre sous-estime l'altitude réelle.</div>`;
-    }
-    // ── Détails intermédiaires ──
-    html += `<div class="section-title">Détail</div>`;
-    html += `<div class="kvline"><span class="k">${label_zi}</span><span class="v">${Zi.toFixed(0)} ft QNH</span></div>`;
-    html += `<div class="kvline"><span class="k">Limite opérationnelle (plancher − ${MARGE_RTBA} ft)</span><span class="v">${Zi_limite.toFixed(0)} ft QNH</span></div>`;
-    html += `<div class="kvline"><span class="k">Altitude-pression (PA)</span><span class="v">${PA_rtba.toFixed(0)} ft</span></div>`;
-    html += `<div class="kvline"><span class="k">Écart ISA local</span><span class="v">${dT_loc_rtba>=0?'+':''}${dT_loc_rtba.toFixed(1)} °C</span></div>`;
-    html += `<div class="kvline"><span class="k">Correction Zv</span><span class="v ${corr_rtba>0?'warn':'ok'}">${corr_rtba>=0?'+':''}${corr_rtba.toFixed(0)} ft</span></div>`;
-    html += `<div class="kvline"><span class="k">Altitude vraie (Zv)</span><span class="v">${Zv_rtba.toFixed(0)} ft</span></div>`;
-    html += `<div class="kvline"><span class="k">Terrain en dessous</span><span class="v">${Zobs.toFixed(0)} ft — hauteur vraie sol ${marge_sol_rtba.toFixed(0)} ft AGL</span></div>`;
-
-    ['p9_out_rtba','p9_out_afficher','p9_out_manuel'].forEach(id => document.getElementById(id).innerHTML = '');
-    document.getElementById('p9_out_rtba').innerHTML = html;
-    return;
-  } else {
-    OAT  = v('OAT_ZV_MAN');
-    Zobs = v('ZOBS_MAN');
-    const isFL = document.querySelector('input[name="ZV_CALAGE"]:checked')?.value === 'fl';
-    if(isFL){
-      const FL   = v('FL_MAN');
-      const qnhFL = v('QNH_FL_MAN');
-      const altFL = FL * 100;                      // altitude affichée FL (calage 1013)
-      Zi   = altFL - (1013 - qnhFL) * 27;         // altitude QNH réelle (position vraie / relief)
-      QNH  = qnhFL;                                // pour affichage seulement
-      // PA reste basé sur FL×100 (calage 1013, donc PA = Zi_FL)
-      const PA_fl   = altFL;
-      const ISA_fl  = 15 - 0.002 * PA_fl;
-      const dT_fl   = OAT - ISA_fl;
-      const corr_fl = 4 * (PA_fl / 1000) * dT_fl;
-      const Zv_fl   = Zi + corr_fl;
-      const marge_fl = Zv_fl - Zobs;
-
-      let verdict, vClass;
-      if(marge_fl < 0)        { verdict = '❌ EN DESSOUS DE LA RÉFÉRENCE'; vClass = 'verdict-bad'; }
-      else if(marge_fl < 200) { verdict = '❌ Marge insuffisante';         vClass = 'verdict-bad'; }
-      else if(marge_fl < 500) { verdict = '⚠️ Marge faible — vigilance';  vClass = 'verdict-warn'; }
-      else                    { verdict = '✅ Marge correcte';             vClass = 'verdict-ok'; }
-
-      let html = '';
-      // ── Résultat principal en premier ──
-      html += `<div class="verdict-box ${vClass}" style="margin-bottom:12px">${verdict}<span class="big">${marge_fl.toFixed(0)} ft</span><span style="font-size:11px;opacity:0.8">Zv (${Zv_fl.toFixed(0)} ft) − obstacle (${Zobs.toFixed(0)} ft)</span></div>`;
-      if(Zv_fl < Zobs){
-        html += `<div class="banner-warn" style="margin-bottom:8px">⚠️ Zv (${Zv_fl.toFixed(0)} ft) &lt; obstacle (${Zobs.toFixed(0)} ft) — l'avion passe <b>en dessous</b> du sommet !</div>`;
-      }
-      if(dT_fl <= -10){
-        html += `<div class="banner-warn" style="margin-bottom:8px">⚠️ Temps très froid (${dT_fl.toFixed(0)}°C/ISA) — l'avion vole significativement plus bas que le FL affiché.</div>`;
-      }
-      // ── Détails intermédiaires ──
-      html += `<div class="section-title">Détail</div>`;
-      html += `<div class="kvline"><span class="k">FL affiché × 100</span><span class="v">${altFL.toFixed(0)} ft (calage 1013)</span></div>`;
-      html += `<div class="kvline"><span class="k">Correction QNH (${qnhFL} hPa)</span><span class="v">${((1013-qnhFL)*27>=0?'−':'+')}${Math.abs((1013-qnhFL)*27).toFixed(0)} ft</span></div>`;
-      html += `<div class="kvline"><span class="k">Altitude QNH réelle</span><span class="v">${Zi.toFixed(0)} ft QNH</span></div>`;
-      html += `<div class="kvline"><span class="k">Écart ISA local</span><span class="v">${dT_fl>=0?'+':''}${dT_fl.toFixed(1)} °C</span></div>`;
-      html += `<div class="kvline"><span class="k">Correction thermique</span><span class="v ${corr_fl>=0?'warn':'ok'}">${corr_fl>=0?'+':''}${corr_fl.toFixed(0)} ft</span></div>`;
-      html += `<div class="kvline"><span class="k">Altitude vraie (Zv)</span><span class="v">${Zv_fl.toFixed(0)} ft</span></div>`;
-      ['p9_out_rtba','p9_out_afficher','p9_out_manuel'].forEach(id => document.getElementById(id).innerHTML = '');
-      document.getElementById('p9_out_manuel').innerHTML = html;
-      return;
-    }
-    // Mode QNH standard
-    QNH  = v('QNH_ZV_MAN');
-    Zi   = v('ZI_MAN');
+  let zoneBoundMax = null, zoneBoundMin = null, zoneDetail = '';
+  if(zoneActive){
+    const isAGL = document.querySelector('input[name="ZONE_REF"]:checked')?.value === 'agl';
+    const terrain = v('ZONE_TERRAIN');
+    const limite = isAGL ? terrain + v('ZONE_LIMITE_AGL') : v('ZONE_LIMITE');
+    const marge = v('ZONE_MARGE');
+    const isAbove = document.querySelector('input[name="ZONE_DIRECTION"]:checked')?.value === 'dessus';
+    if(isAbove){ zoneBoundMin = limite + marge; } else { zoneBoundMax = limite - marge; }
+    zoneDetail = `<div class="section-title">Contrainte de zone</div>`
+      + (isAGL ? `<div class="kvline"><span class="k">Limite (AGL, carte)</span><span class="v">${v('ZONE_LIMITE_AGL').toFixed(0)} ft AGL</span></div><div class="kvline"><span class="k">Terrain</span><span class="v">${terrain.toFixed(0)} ft MSL</span></div>` : '')
+      + `<div class="kvline"><span class="k">Limite (QNH)</span><span class="v">${limite.toFixed(0)} ft</span></div>`
+      + `<div class="kvline"><span class="k">Direction</span><span class="v">Rester ${isAbove?'au-dessus':'en dessous'}</span></div>`
+      + `<div class="kvline"><span class="k">Marge</span><span class="v">${marge.toFixed(0)} ft</span></div>`
+      + `<div class="kvline"><span class="k">${isAbove?'Zi min':'Zi max'} (QNH direct, sans correction)</span><span class="v">${(isAbove?zoneBoundMin:zoneBoundMax).toFixed(0)} ft</span></div>`;
   }
 
-  const PA      = Zi + (1013 - QNH) * 27;
-  const ISA_loc = 15 - 0.002 * PA;
-  const dT_loc  = OAT - ISA_loc;
-  const corr    = 4 * (PA / 1000) * dT_loc;   // base PA — plus rigoureuse
-  const Zv      = Zi + corr;
-
-  // Pour RTBA : marge = Zi (plancher) − Zv (tu dois être EN DESSOUS du plancher)
-  // Pour Manuel : marge = Zv − Zobs (tu dois être AU-DESSUS de l'obstacle)
-  const marge = (m === 'rtba') ? Zi - Zv : Zv - Zobs;
-  const marge_sol_man = (m === 'rtba') ? Zv - Zobs : null; // hauteur vraie sol en RTBA
-
-  let verdict, vClass;
-  if(m === 'rtba'){
-    if(marge < 0)        { verdict = '❌ DÉPASSE LE PLANCHER — Infraction zone'; vClass = 'verdict-bad'; }
-    else if(marge < 100) { verdict = '⚠️ Très proche du plancher — vigilance';   vClass = 'verdict-warn'; }
-    else if(marge < 300) { verdict = '⚠️ Marge faible sous le plancher';         vClass = 'verdict-warn'; }
-    else                 { verdict = '✅ Vol sous le plancher — marge correcte';  vClass = 'verdict-ok'; }
-  } else {
-    if(marge < 0)        { verdict = '❌ EN DESSOUS DE LA RÉFÉRENCE'; vClass = 'verdict-bad'; }
-    else if(marge < 200) { verdict = '❌ Marge insuffisante';         vClass = 'verdict-bad'; }
-    else if(marge < 500) { verdict = '⚠️ Marge faible — vigilance';  vClass = 'verdict-warn'; }
-    else                 { verdict = '✅ Marge correcte';             vClass = 'verdict-ok'; }
+  let obsBoundMin = null, obsDetail = '';
+  if(obsActive){
+    const obstacle = v('OBS_ALTITUDE'), marge = v('OBS_MARGE');
+    const OAT = v('OBS_OAT'), QNH = v('OBS_QNH');
+    const target = obstacle + marge;
+    obsBoundMin = resolveZi(target, OAT, QNH, 'up');
+    const PA = obsBoundMin + (1013 - QNH) * 27;
+    const ISA = 15 - 0.002 * PA;
+    const dT = OAT - ISA;
+    const corr = 4 * (PA / 1000) * dT;
+    const ZvReel = obsBoundMin + corr;
+    obsDetail = `<div class="section-title">Contrainte d'obstacle</div>`
+      + `<div class="kvline"><span class="k">Obstacle (altitude vraie, IGN)</span><span class="v">${obstacle.toFixed(0)} ft</span></div>`
+      + `<div class="kvline"><span class="k">Marge</span><span class="v">${marge.toFixed(0)} ft</span></div>`
+      + `<div class="kvline"><span class="k">Zv cible (obstacle + marge)</span><span class="v">${target.toFixed(0)} ft vrais</span></div>`
+      + `<div class="kvline"><span class="k">Écart ISA</span><span class="v">${dT>=0?'+':''}${dT.toFixed(1)} °C</span></div>`
+      + `<div class="kvline"><span class="k">Zi min (affiché, arrondi ↑50ft)</span><span class="v">${obsBoundMin.toFixed(0)} ft</span></div>`
+      + `<div class="kvline"><span class="k">Zv réelle avec Zi min</span><span class="v">${ZvReel.toFixed(0)} ft vrais</span></div>`;
   }
+
+  const lowerBound = Math.max(zoneBoundMin ?? -Infinity, obsBoundMin ?? -Infinity);
+  const upperBound = zoneBoundMax ?? Infinity;
+  const hasLower = lowerBound > -Infinity;
+  const hasUpper = upperBound < Infinity;
 
   let html = '';
-  // ── Résultat principal en premier ──
-  const label_marge_result = (m === 'rtba') ? 'Marge vraie sous le plancher (Zi − Zv)' : label_marge;
-  html += `<div class="verdict-box ${vClass}" style="margin-bottom:12px">${verdict}<span class="big">${marge.toFixed(0)} ft</span><span style="font-size:11px;opacity:0.8">${label_marge_result}</span></div>`;
-  if(m === 'manuel' && Zv < Zobs){
-    html += `<div class="banner-warn" style="margin-bottom:8px">⚠️ Zv (${Zv.toFixed(0)} ft) &lt; obstacle (${Zobs.toFixed(0)} ft) — l'avion passe <b>en dessous</b> du sommet !</div>`;
+  if(lowerBound <= upperBound){
+    if(hasLower && hasUpper){
+      html += `<div class="verdict-box verdict-ok" style="margin-bottom:12px"><span style="font-size:13px">Fourchette d'altitude à afficher</span><span class="big">${lowerBound.toFixed(0)} – ${upperBound.toFixed(0)} ft</span><span style="font-size:12px">✅ Compatible</span></div>`;
+      html += `<div class="banner-ok">💡 Recommandé : afficher <b>${upperBound.toFixed(0)} ft</b> (meilleure marge tout en respectant la zone)</div>`;
+    } else if(hasLower){
+      html += `<div class="verdict-box verdict-ok" style="margin-bottom:12px"><span style="font-size:13px">Altitude minimale à afficher</span><span class="big">≥ ${lowerBound.toFixed(0)} ft</span><span style="font-size:12px">✅ Possible</span></div>`;
+    } else if(hasUpper){
+      html += `<div class="verdict-box verdict-ok" style="margin-bottom:12px"><span style="font-size:13px">Altitude maximale à afficher</span><span class="big">≤ ${upperBound.toFixed(0)} ft</span><span style="font-size:12px">✅ Possible</span></div>`;
+    }
+  } else {
+    html += `<div class="verdict-box verdict-bad" style="margin-bottom:12px"><span style="font-size:13px">Conflit détecté</span><span class="big">Aucune altitude</span><span style="font-size:12px">❌ Impossible de satisfaire les deux contraintes</span></div>`;
+    html += `<div class="banner-bad">⚠️ Il faudrait afficher au moins ${lowerBound.toFixed(0)} ft, mais rester sous ${upperBound.toFixed(0)} ft pour l'autre contrainte. Contournement nécessaire.</div>`;
   }
-  if(dT_loc >= 15){
-    html += `<div class="banner-warn" style="margin-bottom:8px">⚠️ Écart ISA important (+${dT_loc.toFixed(0)}°C) — marge réelle nettement réduite.</div>`;
-  }
-  // ── Détails intermédiaires ──
-  html += `<div class="section-title">Détail</div>`;
-  html += `<div class="kvline"><span class="k">${label_zi}</span><span class="v">${Zi.toFixed(0)} ft QNH</span></div>`;
-  html += `<div class="kvline"><span class="k">Altitude-pression (PA)</span><span class="v">${PA.toFixed(0)} ft</span></div>`;
-  html += `<div class="kvline"><span class="k">Écart ISA local</span><span class="v">${dT_loc>=0?'+':''}${dT_loc.toFixed(1)} °C</span></div>`;
-  html += `<div class="kvline"><span class="k">Correction Zv</span><span class="v ${corr>0?'warn':'ok'}">${corr>=0?'+':''}${corr.toFixed(0)} ft</span></div>`;
-  html += `<div class="kvline"><span class="k">Altitude vraie (Zv)</span><span class="v">${Zv.toFixed(0)} ft</span></div>`;
-  html += `<div class="kvline"><span class="k">${label_zobs}</span><span class="v">${Zobs.toFixed(0)} ft</span></div>`;
 
-  ['p9_out_rtba','p9_out_afficher','p9_out_manuel'].forEach(id => document.getElementById(id).innerHTML = '');
-  const outId = m === 'rtba' ? 'p9_out_rtba' : m === 'afficher' ? 'p9_out_afficher' : 'p9_out_manuel';
-  document.getElementById(outId).innerHTML = html;
+  html += zoneDetail + obsDetail;
+  document.getElementById('p9_out').innerHTML = html;
 }
+
 
 // ============================================================
 // ONGLET 10 — Risque thermique pilote (tableau FFA)
@@ -1590,15 +1402,24 @@ document.getElementById('btn_sync_rh_th').addEventListener('click', () => {
   calcAll();
 });
 
-// Sync QNH_RTBA ← QNH (onglet 4) à chaque changement
+// Sync OBS_QNH/OBS_OAT ← QNH/OAT (onglet 4) à chaque changement
 document.getElementById('QNH').addEventListener('input', () => {
-  const qnhRtba = document.getElementById('QNH_RTBA');
-  if(qnhRtba && !qnhRtba.dataset.manual){
-    qnhRtba.value = document.getElementById('QNH').value;
+  const obsQnh = document.getElementById('OBS_QNH');
+  if(obsQnh && !obsQnh.dataset.manual){
+    obsQnh.value = document.getElementById('QNH').value;
   }
 });
-document.getElementById('QNH_RTBA').addEventListener('input', () => {
-  document.getElementById('QNH_RTBA').dataset.manual = '1';
+document.getElementById('OBS_QNH').addEventListener('input', () => {
+  document.getElementById('OBS_QNH').dataset.manual = '1';
+});
+document.getElementById('OAT').addEventListener('input', () => {
+  const obsOat = document.getElementById('OBS_OAT');
+  if(obsOat && !obsOat.dataset.manual){
+    obsOat.value = document.getElementById('OAT').value;
+  }
+});
+document.getElementById('OBS_OAT').addEventListener('input', () => {
+  document.getElementById('OBS_OAT').dataset.manual = '1';
 });
 
 // ── Listeners sync LF_LDG (carburant restant) ──────────────
@@ -1619,16 +1440,6 @@ document.getElementById('btn_resync_ldg').addEventListener('click', () => {
   calcAll();
 });
 
-// ── Listener ZV_FLOOR (AGL/MSL dans mode RTBA) ─────────────
-document.querySelectorAll('input[name="ZV_FLOOR"]').forEach(el => {
-  el.addEventListener('change', () => { updateZvModeUI(); calcAll(); });
-});
-
-// ── Listener mode ZV ────────────────────────────────────────
-document.querySelectorAll('input[name="ZV_MODE"]').forEach(el => {
-  el.addEventListener('change', () => { updateZvModeUI(); calcAll(); });
-});
-
 // ── Listeners génériques inputs ─────────────────────────────
 document.querySelectorAll('input').forEach(el => {
   el.addEventListener('input', calcAll);
@@ -1636,7 +1447,7 @@ document.querySelectorAll('input').forEach(el => {
 });
 
 loadAll();
-updateZvModeUI();
+updateZvUI();
 calcAll();
 
 if('serviceWorker' in navigator){
