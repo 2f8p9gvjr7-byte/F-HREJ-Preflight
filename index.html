@@ -332,8 +332,8 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 <div id="p9" class="page">
   <fieldset>
     <legend>🚧 Contrainte de zone (TMA / RTBA / ZR...) — QNH direct, pas de correction thermique</legend>
-    <div class="row"><label>Cette contrainte s'applique</label>
-      <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="ZONE_ACTIVE" checked onchange="updateZvUI(); calcAll()" style="width:20px;height:20px"> <span>Oui</span></label>
+    <div class="row">
+      <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="ZONE_ACTIVE" checked onchange="updateZvUI(); calcAll()" style="width:20px;height:20px"> <span>Je dois respecter une limite de zone sur ce trajet</span></label>
     </div>
     <div id="zone_fields">
       <div class="row"><label>Référence</label>
@@ -357,14 +357,19 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 
   <fieldset>
     <legend>⛰️ Contrainte d'obstacle physique — altitude vraie, correction thermique</legend>
-    <div class="row"><label>Cette contrainte s'applique</label>
-      <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="OBS_ACTIVE" checked onchange="updateZvUI(); calcAll()" style="width:20px;height:20px"> <span>Oui</span></label>
+    <div class="row">
+      <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="OBS_ACTIVE" checked onchange="updateZvUI(); calcAll()" style="width:20px;height:20px"> <span>Il y a un obstacle à dégager sur ce trajet</span></label>
     </div>
     <div id="obs_fields">
       <div class="row"><label>Altitude de l'obstacle (IGN)</label><input id="OBS_ALTITUDE" type="number" step="10" value="1800"><span class="unit">ft MSL</span></div>
       <div class="row"><label>Marge au-dessus de l'obstacle</label><input id="OBS_MARGE" type="number" step="50" value="500"><span class="unit">ft</span></div>
-      <div class="row"><label>OAT <span style="font-size:10px;color:var(--text-dim)">(auto onglet 4, modifiable)</span></label><input id="OBS_OAT" type="number" step="1" value="15"><span class="unit">°C</span></div>
-      <div class="row"><label>QNH <span style="font-size:10px;color:var(--text-dim)">(auto onglet 4, modifiable)</span></label><input id="OBS_QNH" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
+      <div class="row"><label>Correction thermique <span style="font-size:10px;color:var(--text-dim)">(grand froid / montagne)</span></label>
+        <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="OBS_THERMO" onchange="updateZvUI(); calcAll()" style="width:20px;height:20px"> <span>Activer</span></label>
+      </div>
+      <div id="obs_thermo_fields" class="hidden">
+        <div class="row"><label>OAT <span style="font-size:10px;color:var(--text-dim)">(auto onglet 4, modifiable)</span></label><input id="OBS_OAT" type="number" step="1" value="15"><span class="unit">°C</span></div>
+        <div class="row"><label>QNH <span style="font-size:10px;color:var(--text-dim)">(auto onglet 4, modifiable)</span></label><input id="OBS_QNH" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
+      </div>
     </div>
   </fieldset>
 
@@ -460,7 +465,7 @@ function saveAll(){
     const el = document.querySelector(`input[name="${name}"]:checked`);
     if(el) localStorage.setItem('hrej_'+name, el.value);
   });
-  ['ZONE_ACTIVE','OBS_ACTIVE'].forEach(id => {
+  ['ZONE_ACTIVE','OBS_ACTIVE','OBS_THERMO'].forEach(id => {
     const el = document.getElementById(id);
     if(el) localStorage.setItem('hrej_'+id, el.checked ? '1' : '0');
   });
@@ -497,7 +502,7 @@ function loadAll(){
       if(el) el.checked = true;
     }
   });
-  ['ZONE_ACTIVE','OBS_ACTIVE'].forEach(id => {
+  ['ZONE_ACTIVE','OBS_ACTIVE','OBS_THERMO'].forEach(id => {
     const saved = localStorage.getItem('hrej_'+id);
     if(saved !== null){ const el = document.getElementById(id); if(el) el.checked = saved === '1'; }
   });
@@ -1123,6 +1128,8 @@ function updateZvUI(){
   document.getElementById('zone_msl_row').classList.toggle('hidden', isAGL);
   document.getElementById('zone_agl_row').classList.toggle('hidden', !isAGL);
   document.getElementById('zone_terrain_row').style.display = isAGL ? '' : 'none';
+  const thermoOn = document.getElementById('OBS_THERMO').checked;
+  document.getElementById('obs_thermo_fields').classList.toggle('hidden', !thermoOn);
 }
 
 // Résout Zi (arrondi) tel que Zv(Zi) = target, par la même méthode itérative
@@ -1144,69 +1151,107 @@ function resolveZi(target, OAT, QNH, roundMode){
 // Contrainte de zone (QNH direct) + contrainte d'obstacle (altitude vraie, corrigée)
 // chacune activable/désactivable indépendamment
 // ============================================================
+// Altitude vraie obtenue en affichant Zi, avec correction thermique (calcul direct, non itératif)
+function zvAtZi(Zi, OAT, QNH){
+  const PA = Zi + (1013 - QNH) * 27;
+  const ISA = 15 - 0.002 * PA;
+  const dT = OAT - ISA;
+  const corr = 4 * (PA / 1000) * dT;
+  return { Zv: Zi + corr, dT, PA };
+}
+
 function calc9(){
   const zoneActive = document.getElementById('ZONE_ACTIVE').checked;
   const obsActive = document.getElementById('OBS_ACTIVE').checked;
 
   if(!zoneActive && !obsActive){
-    document.getElementById('p9_out').innerHTML = `<div class="banner-warn">⚠️ Activez au moins une contrainte (zone ou obstacle) pour calculer.</div>`;
+    document.getElementById('p9_out').innerHTML = `<div class="banner-warn">⚠️ Cochez au moins une contrainte (zone et/ou obstacle) pour lancer le calcul.</div>`;
     return;
   }
 
-  let zoneBoundMax = null, zoneBoundMin = null, zoneDetail = '';
+  // ── Contrainte de zone ──
+  let zoneBoundMax = null, zoneBoundMin = null, zoneLimite = null, zoneIsAbove = false, zoneMarge = 0, zoneDetail = '';
   if(zoneActive){
     const isAGL = document.querySelector('input[name="ZONE_REF"]:checked')?.value === 'agl';
     const terrain = v('ZONE_TERRAIN');
-    const limite = isAGL ? terrain + v('ZONE_LIMITE_AGL') : v('ZONE_LIMITE');
-    const marge = v('ZONE_MARGE');
-    const isAbove = document.querySelector('input[name="ZONE_DIRECTION"]:checked')?.value === 'dessus';
-    if(isAbove){ zoneBoundMin = limite + marge; } else { zoneBoundMax = limite - marge; }
-    zoneDetail = `<div class="section-title">Contrainte de zone</div>`
+    zoneLimite = isAGL ? terrain + v('ZONE_LIMITE_AGL') : v('ZONE_LIMITE');
+    zoneMarge = v('ZONE_MARGE');
+    zoneIsAbove = document.querySelector('input[name="ZONE_DIRECTION"]:checked')?.value === 'dessus';
+    if(zoneIsAbove){ zoneBoundMin = zoneLimite + zoneMarge; } else { zoneBoundMax = zoneLimite - zoneMarge; }
+    zoneDetail = `<div class="section-title">Détail — Contrainte de zone</div>`
       + (isAGL ? `<div class="kvline"><span class="k">Limite (AGL, carte)</span><span class="v">${v('ZONE_LIMITE_AGL').toFixed(0)} ft AGL</span></div><div class="kvline"><span class="k">Terrain</span><span class="v">${terrain.toFixed(0)} ft MSL</span></div>` : '')
-      + `<div class="kvline"><span class="k">Limite (QNH)</span><span class="v">${limite.toFixed(0)} ft</span></div>`
-      + `<div class="kvline"><span class="k">Direction</span><span class="v">Rester ${isAbove?'au-dessus':'en dessous'}</span></div>`
-      + `<div class="kvline"><span class="k">Marge</span><span class="v">${marge.toFixed(0)} ft</span></div>`
-      + `<div class="kvline"><span class="k">${isAbove?'Zi min':'Zi max'} (QNH direct, sans correction)</span><span class="v">${(isAbove?zoneBoundMin:zoneBoundMax).toFixed(0)} ft</span></div>`;
+      + `<div class="kvline"><span class="k">Limite (QNH)</span><span class="v">${zoneLimite.toFixed(0)} ft</span></div>`
+      + `<div class="kvline"><span class="k">Direction</span><span class="v">Rester ${zoneIsAbove?'au-dessus':'en dessous'}</span></div>`
+      + `<div class="kvline"><span class="k">Marge demandée</span><span class="v">${zoneMarge.toFixed(0)} ft</span></div>`
+      + `<div class="kvline"><span class="k">${zoneIsAbove?'Zi min':'Zi max'} (QNH direct, sans correction)</span><span class="v">${(zoneIsAbove?zoneBoundMin:zoneBoundMax).toFixed(0)} ft</span></div>`;
   }
 
-  let obsBoundMin = null, obsDetail = '';
+  // ── Contrainte d'obstacle ──
+  let obsBoundMin = null, obstacle = null, obsMargeDemandee = 0, thermoOn = false, obsOAT = null, obsQNH = null, obsDetail = '';
   if(obsActive){
-    const obstacle = v('OBS_ALTITUDE'), marge = v('OBS_MARGE');
-    const OAT = v('OBS_OAT'), QNH = v('OBS_QNH');
-    const target = obstacle + marge;
-    obsBoundMin = resolveZi(target, OAT, QNH, 'up');
-    const PA = obsBoundMin + (1013 - QNH) * 27;
-    const ISA = 15 - 0.002 * PA;
-    const dT = OAT - ISA;
-    const corr = 4 * (PA / 1000) * dT;
-    const ZvReel = obsBoundMin + corr;
-    obsDetail = `<div class="section-title">Contrainte d'obstacle</div>`
-      + `<div class="kvline"><span class="k">Obstacle (altitude vraie, IGN)</span><span class="v">${obstacle.toFixed(0)} ft</span></div>`
-      + `<div class="kvline"><span class="k">Marge</span><span class="v">${marge.toFixed(0)} ft</span></div>`
-      + `<div class="kvline"><span class="k">Zv cible (obstacle + marge)</span><span class="v">${target.toFixed(0)} ft vrais</span></div>`
-      + `<div class="kvline"><span class="k">Écart ISA</span><span class="v">${dT>=0?'+':''}${dT.toFixed(1)} °C</span></div>`
-      + `<div class="kvline"><span class="k">Zi min (affiché, arrondi ↑50ft)</span><span class="v">${obsBoundMin.toFixed(0)} ft</span></div>`
-      + `<div class="kvline"><span class="k">Zv réelle avec Zi min</span><span class="v">${ZvReel.toFixed(0)} ft vrais</span></div>`;
+    obstacle = v('OBS_ALTITUDE'); obsMargeDemandee = v('OBS_MARGE');
+    thermoOn = document.getElementById('OBS_THERMO').checked;
+    const target = obstacle + obsMargeDemandee;
+
+    if(!thermoOn){
+      obsBoundMin = target;
+      obsDetail = `<div class="section-title">Détail — Contrainte d'obstacle</div>`
+        + `<div class="kvline"><span class="k">Obstacle (QNH)</span><span class="v">${obstacle.toFixed(0)} ft</span></div>`
+        + `<div class="kvline"><span class="k">Marge demandée</span><span class="v">${obsMargeDemandee.toFixed(0)} ft</span></div>`
+        + `<div class="kvline"><span class="k">Zi min (obstacle + marge, QNH direct)</span><span class="v">${obsBoundMin.toFixed(0)} ft</span></div>`;
+    } else {
+      obsOAT = v('OBS_OAT'); obsQNH = v('OBS_QNH');
+      obsBoundMin = resolveZi(target, obsOAT, obsQNH, 'up');
+      const r = zvAtZi(obsBoundMin, obsOAT, obsQNH);
+      obsDetail = `<div class="section-title">Détail — Contrainte d'obstacle (correction thermique)</div>`
+        + `<div class="kvline"><span class="k">Obstacle (altitude vraie, IGN)</span><span class="v">${obstacle.toFixed(0)} ft</span></div>`
+        + `<div class="kvline"><span class="k">Marge demandée</span><span class="v">${obsMargeDemandee.toFixed(0)} ft</span></div>`
+        + `<div class="kvline"><span class="k">Zv cible (obstacle + marge)</span><span class="v">${target.toFixed(0)} ft vrais</span></div>`
+        + `<div class="kvline"><span class="k">Écart ISA</span><span class="v">${r.dT>=0?'+':''}${r.dT.toFixed(1)} °C</span></div>`
+        + `<div class="kvline"><span class="k">Zi min (affiché, arrondi ↑50ft)</span><span class="v">${obsBoundMin.toFixed(0)} ft</span></div>`
+        + `<div class="kvline"><span class="k">Zv réelle avec Zi min</span><span class="v">${r.Zv.toFixed(0)} ft vrais</span></div>`;
+    }
   }
 
   const lowerBound = Math.max(zoneBoundMin ?? -Infinity, obsBoundMin ?? -Infinity);
   const upperBound = zoneBoundMax ?? Infinity;
   const hasLower = lowerBound > -Infinity;
   const hasUpper = upperBound < Infinity;
+  const compatible = lowerBound <= upperBound;
+
+  // Altitude recommandée pour évaluer les marges réelles obtenues
+  const recommended = compatible ? (hasUpper ? upperBound : lowerBound) : null;
 
   let html = '';
-  if(lowerBound <= upperBound){
+
+  // ── Verdicts explicites par contrainte (en tête, langage pilote) ──
+  if(compatible && recommended !== null){
+    if(zoneActive){
+      const margeReelle = zoneIsAbove ? recommended - zoneLimite : zoneLimite - recommended;
+      html += `<div class="banner-ok">✅ Zone : respectée — marge de ${margeReelle.toFixed(0)} ft à ${recommended.toFixed(0)} ft affichés</div>`;
+    }
+    if(obsActive){
+      let margeReelle;
+      if(thermoOn){ margeReelle = zvAtZi(recommended, obsOAT, obsQNH).Zv - obstacle; }
+      else { margeReelle = recommended - obstacle; }
+      html += `<div class="banner-ok">✅ Obstacle : dégagé — marge de ${margeReelle.toFixed(0)} ft à ${recommended.toFixed(0)} ft affichés</div>`;
+    }
+  } else if(!compatible){
+    if(zoneActive) html += `<div class="banner-bad">❌ Zone : respectée seulement si vous affichez ≤ ${zoneBoundMax.toFixed(0)} ft</div>`;
+    if(obsActive)  html += `<div class="banner-bad">❌ Obstacle : dégagé seulement si vous affichez ≥ ${obsBoundMin.toFixed(0)} ft</div>`;
+    html += `<div class="banner-bad">⚠️ Ces deux exigences sont incompatibles — contournement nécessaire, aucune altitude ne convient aux deux à la fois.</div>`;
+  }
+
+  if(compatible){
+    html += `<div class="section-title">Fourchette technique</div>`;
     if(hasLower && hasUpper){
-      html += `<div class="verdict-box verdict-ok" style="margin-bottom:12px"><span style="font-size:13px">Fourchette d'altitude à afficher</span><span class="big">${lowerBound.toFixed(0)} – ${upperBound.toFixed(0)} ft</span><span style="font-size:12px">✅ Compatible</span></div>`;
-      html += `<div class="banner-ok">💡 Recommandé : afficher <b>${upperBound.toFixed(0)} ft</b> (meilleure marge tout en respectant la zone)</div>`;
+      html += `<div class="verdict-box verdict-ok" style="margin-bottom:12px"><span style="font-size:13px">Altitude à afficher</span><span class="big">${lowerBound.toFixed(0)} – ${upperBound.toFixed(0)} ft</span><span style="font-size:12px">✅ Compatible</span></div>`;
+      html += `<div class="banner-ok">💡 Recommandé : afficher <b>${upperBound.toFixed(0)} ft</b> (meilleure marge côté obstacle tout en restant à la limite de la zone)</div>`;
     } else if(hasLower){
       html += `<div class="verdict-box verdict-ok" style="margin-bottom:12px"><span style="font-size:13px">Altitude minimale à afficher</span><span class="big">≥ ${lowerBound.toFixed(0)} ft</span><span style="font-size:12px">✅ Possible</span></div>`;
     } else if(hasUpper){
       html += `<div class="verdict-box verdict-ok" style="margin-bottom:12px"><span style="font-size:13px">Altitude maximale à afficher</span><span class="big">≤ ${upperBound.toFixed(0)} ft</span><span style="font-size:12px">✅ Possible</span></div>`;
     }
-  } else {
-    html += `<div class="verdict-box verdict-bad" style="margin-bottom:12px"><span style="font-size:13px">Conflit détecté</span><span class="big">Aucune altitude</span><span style="font-size:12px">❌ Impossible de satisfaire les deux contraintes</span></div>`;
-    html += `<div class="banner-bad">⚠️ Il faudrait afficher au moins ${lowerBound.toFixed(0)} ft, mais rester sous ${upperBound.toFixed(0)} ft pour l'autre contrainte. Contournement nécessaire.</div>`;
   }
 
   html += zoneDetail + obsDetail;
