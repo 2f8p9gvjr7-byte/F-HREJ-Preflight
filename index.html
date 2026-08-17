@@ -344,7 +344,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
       </div>
       <div class="row" id="zone_msl_row"><label>Altitude de la limite (lue sur la carte)</label><input id="ZONE_LIMITE" type="number" step="50" value="2500"><span class="unit">ft MSL</span></div>
       <div class="row hidden" id="zone_agl_row"><label>Altitude de la limite (lue sur la carte)</label><input id="ZONE_LIMITE_AGL" type="number" step="50" value="800"><span class="unit">ft AGL</span></div>
-      <div class="row" id="zone_terrain_row" style="display:none"><label>Terrain sous la zone (IGN)</label><input id="ZONE_TERRAIN" type="number" step="50" value="1200"><span class="unit">ft MSL</span></div>
+      <div class="row" id="zone_terrain_row" style="display:none"><label>Altitude du sol ici <span style="font-size:10px;color:var(--text-dim)">(pour additionner au AGL — pas de pression, pas un obstacle)</span></label><input id="ZONE_TERRAIN" type="number" step="50" value="1200"><span class="unit">ft MSL</span></div>
       <div class="row"><label>Direction souhaitée</label>
         <div class="runway-toggle" style="margin:0">
           <label><input type="radio" name="ZONE_DIRECTION" value="dessous" checked onchange="calcAll()"><span>Rester en dessous</span></label>
@@ -1171,15 +1171,17 @@ function calc9(){
 
   // ── Contrainte de zone ──
   let zoneBoundMax = null, zoneBoundMin = null, zoneLimite = null, zoneIsAbove = false, zoneMarge = 0, zoneDetail = '';
+  let zoneIsAGL = false, zoneAGLraw = 0;
   if(zoneActive){
     const isAGL = document.querySelector('input[name="ZONE_REF"]:checked')?.value === 'agl';
+    zoneIsAGL = isAGL; zoneAGLraw = v('ZONE_LIMITE_AGL');
     const terrain = v('ZONE_TERRAIN');
     zoneLimite = isAGL ? terrain + v('ZONE_LIMITE_AGL') : v('ZONE_LIMITE');
     zoneMarge = v('ZONE_MARGE');
     zoneIsAbove = document.querySelector('input[name="ZONE_DIRECTION"]:checked')?.value === 'dessus';
     if(zoneIsAbove){ zoneBoundMin = zoneLimite + zoneMarge; } else { zoneBoundMax = zoneLimite - zoneMarge; }
     zoneDetail = `<div class="section-title">Détail — Contrainte de zone</div>`
-      + (isAGL ? `<div class="kvline"><span class="k">Limite (AGL, carte)</span><span class="v">${v('ZONE_LIMITE_AGL').toFixed(0)} ft AGL</span></div><div class="kvline"><span class="k">Terrain</span><span class="v">${terrain.toFixed(0)} ft MSL</span></div>` : '')
+      + (isAGL ? `<div class="kvline"><span class="k">Limite (AGL, carte)</span><span class="v">${v('ZONE_LIMITE_AGL').toFixed(0)} ft AGL</span></div><div class="kvline"><span class="k">Altitude du sol (addition, pas de pression)</span><span class="v">${terrain.toFixed(0)} ft MSL</span></div>` : '')
       + `<div class="kvline"><span class="k">Limite (QNH)</span><span class="v">${zoneLimite.toFixed(0)} ft</span></div>`
       + `<div class="kvline"><span class="k">Direction</span><span class="v">Rester ${zoneIsAbove?'au-dessus':'en dessous'}</span></div>`
       + `<div class="kvline"><span class="k">Marge demandée</span><span class="v">${zoneMarge.toFixed(0)} ft</span></div>`
@@ -1240,6 +1242,14 @@ function calc9(){
     if(zoneActive) html += `<div class="banner-bad">❌ Zone : respectée seulement si vous affichez ≤ ${zoneBoundMax.toFixed(0)} ft</div>`;
     if(obsActive)  html += `<div class="banner-bad">❌ Obstacle : dégagé seulement si vous affichez ≥ ${obsBoundMin.toFixed(0)} ft</div>`;
     html += `<div class="banner-bad">⚠️ Ces deux exigences sont incompatibles — contournement nécessaire, aucune altitude ne convient aux deux à la fois.</div>`;
+  }
+
+  // ── Avertissements de bon sens opérationnel ──
+  if((zoneActive && zoneMarge === 0) || (obsActive && obsMargeDemandee === 0)){
+    html += `<div class="banner-warn">⚠️ Marge à 0 ft sur au moins une contrainte : la fourchette calculée est la limite technique absolue, sans aucune tolérance de sécurité (turbulence, imprécision altimétrique...). Ne pas voler sur ces chiffres tels quels — remettez une marge réaliste (300–500 ft) avant de choisir une altitude.</div>`;
+  }
+  if(zoneActive && !zoneIsAbove && zoneIsAGL && zoneAGLraw < 1500){
+    html += `<div class="banner-warn">⚠️ Passer sous un plancher aussi bas (${zoneAGLraw.toFixed(0)} ft AGL) impose de rester à cette hauteur au-dessus du relief sur <b>toute</b> la traversée. Le calcul ne vérifie qu'un seul point de terrain que vous avez saisi — si le relief monte ailleurs sous la zone, ce plafond ne suffit plus à cet endroit. Utilisez le point culminant sous la zone, pas un point isolé, ou envisagez plutôt "Rester au-dessus" si l'altitude de croisière le permet : c'est presque toujours l'option la plus sûre et la plus réaliste.</div>`;
   }
 
   if(compatible){
