@@ -1254,7 +1254,7 @@ function calc9(){
     html += `<div class="banner-warn">⚠️ Marge à 0 ft sur au moins une contrainte : la fourchette calculée est la limite technique absolue, sans aucune tolérance de sécurité (turbulence, imprécision altimétrique...). Ne pas voler sur ces chiffres tels quels — remettez une marge réaliste (300–500 ft) avant de choisir une altitude.</div>`;
   }
   if(zoneActive && !zoneIsAbove && zoneIsAGL && zoneAGLraw < 1500){
-    html += `<div class="banner-warn">⚠️ Passer sous un plancher aussi bas (${zoneAGLraw.toFixed(0)} ft AGL) impose de rester à cette hauteur au-dessus du relief sur <b>toute</b> la traversée. Le calcul ne vérifie qu'un seul point de terrain que vous avez saisi — si le relief monte ailleurs sous la zone, ce plafond ne suffit plus à cet endroit. Utilisez le point culminant sous la zone, pas un point isolé, ou envisagez plutôt "Rester au-dessus" si l'altitude de croisière le permet : c'est presque toujours l'option la plus sûre et la plus réaliste.</div>`;
+    html += `<div class="banner-warn">⚠️ Passer sous un plancher aussi bas (${zoneAGLraw.toFixed(0)} ft AGL) impose de rester à cette hauteur au-dessus du relief sur <b>toute</b> la traversée. En pratique, ce plancher AGL est ancré sur <b>une seule référence sol fixe</b> (généralement le point le plus haut sous la zone, comme indiqué sur la carte/SUP AIP), pas une surface qui suit le relief. Vérifiez que la valeur saisie correspond bien au point culminant sous la zone. Envisagez aussi "Rester au-dessus" si l'altitude de croisière le permet : c'est souvent l'option la plus simple et la plus réaliste.</div>`;
   }
 
   if(compatible){
