@@ -1190,6 +1190,7 @@ function calc9(){
 
   // ── Contrainte d'obstacle ──
   let obsBoundMin = null, obstacle = null, obsMargeDemandee = 0, thermoOn = false, obsOAT = null, obsQNH = null, obsDetail = '';
+  let obsZvAuMin = null;
   if(obsActive){
     obstacle = v('OBS_ALTITUDE'); obsMargeDemandee = v('OBS_MARGE');
     thermoOn = document.getElementById('OBS_THERMO').checked;
@@ -1205,6 +1206,7 @@ function calc9(){
       obsOAT = v('OBS_OAT'); obsQNH = v('OBS_QNH');
       obsBoundMin = resolveZi(target, obsOAT, obsQNH, 'up');
       const r = zvAtZi(obsBoundMin, obsOAT, obsQNH);
+      obsZvAuMin = r.Zv;
       obsDetail = `<div class="section-title">Détail — Contrainte d'obstacle (correction thermique)</div>`
         + `<div class="kvline"><span class="k">Obstacle (altitude vraie, IGN)</span><span class="v">${obstacle.toFixed(0)} ft</span></div>`
         + `<div class="kvline"><span class="k">Marge demandée</span><span class="v">${obsMargeDemandee.toFixed(0)} ft</span></div>`
@@ -1233,14 +1235,17 @@ function calc9(){
       html += `<div class="banner-ok">✅ Zone : respectée — marge de ${margeReelle.toFixed(0)} ft à ${recommended.toFixed(0)} ft affichés</div>`;
     }
     if(obsActive){
-      let margeReelle;
-      if(thermoOn){ margeReelle = zvAtZi(recommended, obsOAT, obsQNH).Zv - obstacle; }
-      else { margeReelle = recommended - obstacle; }
-      html += `<div class="banner-ok">✅ Obstacle : dégagé — marge de ${margeReelle.toFixed(0)} ft à ${recommended.toFixed(0)} ft affichés</div>`;
+      let margeReelle, zvAffiche = '';
+      if(thermoOn){
+        const zv = zvAtZi(recommended, obsOAT, obsQNH).Zv;
+        margeReelle = zv - obstacle;
+        zvAffiche = ` — vous seriez alors réellement à ≈ ${zv.toFixed(0)} ft`;
+      } else { margeReelle = recommended - obstacle; }
+      html += `<div class="banner-ok">✅ Obstacle : dégagé — marge de ${margeReelle.toFixed(0)} ft à ${recommended.toFixed(0)} ft affichés${zvAffiche}</div>`;
     }
   } else if(!compatible){
     if(zoneActive) html += `<div class="banner-bad">❌ Zone : respectée seulement si vous affichez ≤ ${zoneBoundMax.toFixed(0)} ft</div>`;
-    if(obsActive)  html += `<div class="banner-bad">❌ Obstacle : dégagé seulement si vous affichez ≥ ${obsBoundMin.toFixed(0)} ft</div>`;
+    if(obsActive)  html += `<div class="banner-bad">❌ Obstacle : dégagé seulement si vous affichez ≥ ${obsBoundMin.toFixed(0)} ft${thermoOn ? ` (à cet affichage, vous seriez réellement à ≈ ${obsZvAuMin.toFixed(0)} ft — c'est bien votre altitude à vous, pas celle du relief)` : ''}</div>`;
     html += `<div class="banner-bad">⚠️ Ces deux exigences sont incompatibles — contournement nécessaire, aucune altitude ne convient aux deux à la fois.</div>`;
   }
 
