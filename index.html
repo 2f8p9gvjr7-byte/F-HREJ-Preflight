@@ -377,7 +377,12 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   <div id="p9_out" class="result"></div>
 
   <div class="notes" style="margin-top:8px">
-    <b>Formule :</b> PA = Zi + (1013 − QNH) × 27 · Zv = Zi + 4 × (PA/1000) × ΔT_ISA_local ·
+    <b>Méthode de correction thermique (bloc obstacle) — formule OACI exacte, pas d'approximation :</b><br>
+    1. Altitude-pression : <b>PA = Zi + (1013 − QNH) × 27</b><br>
+    2. Température ISA à cette PA : <b>T_ISA = 15 − 1,98 × (PA/1000)</b> °C<br>
+    3. Conversion en Kelvin : <b>Tk = T + 273,15</b> (réelle et ISA)<br>
+    4. Altitude vraie : <b>Zv = Zi × (Tk_réelle / Tk_ISA)</b><br>
+    Référence : niveau de la mer (QNH). Voir le tuto joint pour le détail pas à pas et la méthode manuelle alternative (approximation linéaire, calculette).<br>
     <b>Usage non certifié — vérifier avec les abaques officiels</b>
   </div>
 </div>
@@ -1132,32 +1137,33 @@ function updateZvUI(){
   document.getElementById('obs_thermo_fields').classList.toggle('hidden', !thermoOn);
 }
 
-// Résout Zi (arrondi) tel que Zv(Zi) = target, par la même méthode itérative
+// ── Méthode OACI exacte (ratio de températures absolues, Kelvin) ──
+// Zv = Zi × (T_réelle_K / T_ISA_K), T_ISA calculée à l'altitude-pression Zi
+// Référence : niveau de la mer (QNH), lapse rate ISA = 1,98 °C/1000 ft
+function isaTempC(PA_ft){ return 15 - 1.98 * (PA_ft / 1000); }
+function pressureAltitude(Zi, QNH){ return Zi + (1013 - QNH) * 27; }
+
+// Altitude vraie obtenue en affichant Zi, avec correction thermique (calcul direct)
+function zvAtZi(Zi, OAT, QNH){
+  const PA = pressureAltitude(Zi, QNH);
+  const ISA_C = isaTempC(PA);
+  const dT = OAT - ISA_C;
+  const Tk_reelle = OAT + 273.15;
+  const Tk_isa = ISA_C + 273.15;
+  const ratio = Tk_reelle / Tk_isa;
+  return { Zv: Zi * ratio, dT, PA, ratio };
+}
+
+// Résout Zi (arrondi) tel que Zv(Zi) = target, par résolution itérative
+// (le ratio dépend de PA qui dépend de Zi : on converge en quelques itérations)
 // roundMode: 'up' (ceil, pour garantir de dégager un obstacle) ou 'down' (floor, pour garantir de rester sous un plafond)
 function resolveZi(target, OAT, QNH, roundMode){
   let Zi_it = target;
   for(let i=0; i<20; i++){
-    const PA_it  = Zi_it + (1013 - QNH) * 27;
-    const ISA_it = 15 - 0.002 * PA_it;
-    const dT_it  = OAT - ISA_it;
-    const corr_it = 4 * (PA_it / 1000) * dT_it;
-    Zi_it = target - corr_it;
+    const r = zvAtZi(Zi_it, OAT, QNH);
+    Zi_it = target / r.ratio;
   }
   return roundMode === 'up' ? Math.ceil(Zi_it / 50) * 50 : Math.floor(Zi_it / 50) * 50;
-}
-
-// ============================================================
-// ONGLET 9 — Altitude vraie (Zv) — écran unique
-// Contrainte de zone (QNH direct) + contrainte d'obstacle (altitude vraie, corrigée)
-// chacune activable/désactivable indépendamment
-// ============================================================
-// Altitude vraie obtenue en affichant Zi, avec correction thermique (calcul direct, non itératif)
-function zvAtZi(Zi, OAT, QNH){
-  const PA = Zi + (1013 - QNH) * 27;
-  const ISA = 15 - 0.002 * PA;
-  const dT = OAT - ISA;
-  const corr = 4 * (PA / 1000) * dT;
-  return { Zv: Zi + corr, dT, PA };
 }
 
 function calc9(){
