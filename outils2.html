@@ -134,12 +134,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   </fieldset>
 
   <fieldset>
-    <legend>🪂 VBG — Vitesse de meilleure finesse</legend>
-    <div class="notes" style="margin-top:0">VBG = 78 × √(M / 1050)</div>
-  </fieldset>
-
-  <fieldset>
-    <legend>🛬 VS — Vitesse de décrochage</legend>
+    <legend>🌀 Configuration en vol</legend>
     <div class="row"><label>Volets</label>
       <div class="runway-toggle" style="margin:0">
         <label><input type="radio" name="V_VOLET" value="0" checked><span>0</span></label>
@@ -149,17 +144,13 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
     </div>
     <div class="row"><label>Inclinaison en virage</label><input id="V_VIRAGE" type="number" step="1" value="0"><span class="unit">°</span></div>
     <div class="row"><label>Marge de sécurité</label><input id="V_SECUR" type="number" step="1" value="0"><span class="unit">%</span></div>
-    <div class="notes" style="margin-top:0">VS = ROUND( VS0(volets) × √(M/WMAX) × √(1/cos(virage)) × (1+sécu/100) )<br>VS0 : 56 kt (volets 0) · 53 kt (volets 1) · 50 kt (volets 2)</div>
+    <div class="notes" style="margin-top:0">VS = ROUND( VS0(volets) × √(M/WMAX) × √(1/cos(virage)) × (1+sécu/100) )<br>VS0 (POH DR400 série, en configuration 0°bank) : 54 kt (volets 0) · 50 kt (volets 1) · 47 kt (volets 2)</div>
   </fieldset>
 
   <fieldset>
-    <legend>🐌 Vol lent — plage de vitesse (VS à 1,45×VS)</legend>
+    <legend>🐌 Coefficients vol lent</legend>
     <div class="row"><label>Coefficient borne haute (fin vol lent)</label><input id="V_KMAX" type="number" step="0.01" value="1.45"></div>
     <div class="row"><label>Coefficient transition 1<sup>er</sup>/2<sup>e</sup> régime</label><input id="V_KTRANS" type="number" step="0.01" value="1.3"></div>
-    <div class="notes" style="margin-top:6px">
-      La plage de vol lent va de <b>VS</b> (borne basse) à <b>1,45×VS</b> (borne haute).<br>
-      Le point à <b>1,3×VS</b> n'est pas une borne, mais la vitesse de transition entre le 1<sup>er</sup> régime (côté rapide, stable) et le 2<sup>e</sup> régime (côté lent, instable, plus de puissance nécessaire pour ralentir).
-    </div>
   </fieldset>
 
   <button class="btn" onclick="calcVitesses()">Calculer les vitesses</button>
@@ -315,29 +306,49 @@ function calcVitesses(){
   const VIRAGE = vv('V_VIRAGE'), SECUR = vv('V_SECUR');
   const KMAX = vv('V_KMAX'), KTRANS = vv('V_KTRANS');
 
-  const VBG = 78 * Math.sqrt(M / 1050);
+  // VS0 issues du POH DR400 série (ManualsLib), en configuration 0° bank — spécifiques au 160,
+  // vérifiées : la formule ci-dessous retombe sur les valeurs du POH à 30° et 60° de bank à ±1kt près.
+  const vs0map = { '0':54, '1':50, '2':47 };
+  function vsAt(v){ return vs0map[v] * Math.sqrt(M / WMAX); }
 
-  const vs0map = { '0':56, '1':53, '2':50 };
-  const VS0 = vs0map[volet];
   const cosV = Math.cos(VIRAGE * Math.PI / 180);
-  let html = '';
   if(cosV <= 0){
-    html = `<div class="banner-warn">⚠️ Inclinaison ≥ 90° — calcul impossible (facteur de charge infini).</div>`;
-    document.getElementById('p2_out').innerHTML = html;
+    document.getElementById('p2_out').innerHTML = `<div class="banner-warn">⚠️ Inclinaison ≥ 90° — calcul impossible (facteur de charge infini).</div>`;
     return;
   }
-  const VS = Math.round(VS0 * Math.sqrt(M / WMAX) * Math.sqrt(1 / cosV) * (1 + SECUR / 100));
-  const VHAUT = Math.round(KMAX * VS);      // borne haute du vol lent (fin de la plage)
-  const VTRANS = Math.round(KTRANS * VS);   // transition 1er/2e régime (à l'intérieur de la plage)
-  const VBAS = VS;                          // borne basse = VS lui-même
 
-  html += `<div class="section-title">Résultats</div>`;
-  html += `<div class="kvline"><span class="k">VBG — meilleure finesse</span><span class="v">${VBG.toFixed(1)} kt</span></div>`;
-  html += `<div class="kvline"><span class="k">VS — décrochage (volets ${volet})</span><span class="v">${VS} kt</span></div>`;
-  html += `<div class="section-title">Plage de vol lent</div>`;
-  html += `<div class="kvline"><span class="k">Borne basse (= VS)</span><span class="v">${VBAS} kt</span></div>`;
-  html += `<div class="kvline"><span class="k">Transition 1er/2e régime (1,3×VS)</span><span class="v">${VTRANS} kt</span></div>`;
-  html += `<div class="kvline"><span class="k">Borne haute (1,45×VS)</span><span class="v">${VHAUT} kt</span></div>`;
+  // 1. Vitesse limite anti-décrochage en virage (décollage / remise de gaz)
+  const VS_virage = Math.round(vs0map[volet] * Math.sqrt(M / WMAX) * Math.sqrt(1 / cosV) * (1 + SECUR / 100));
+
+  // 2. Remise de gaz : seuils de rentrée progressive des volets (indépendant du sélecteur ci-dessus)
+  const V_retrait_30_10 = Math.round(1.2 * vsAt('1'));   // seuil pour passer du 2e au 1er cran
+  const V_retrait_10_0  = Math.round(1.2 * vsAt('0'));   // seuil pour passer du 1er cran à lisse
+
+  // 3. Second régime de vol (VS à 1,3×VS), configuration actuellement sélectionnée
+  const VS_config   = Math.round(vsAt(volet));
+  const V_2eregime  = Math.round(KTRANS * vsAt(volet));
+  const V_hautvollent = Math.round(KMAX * vsAt(volet));
+
+  // 4. VBG — vitesse de meilleure finesse (pour référence, priorité basse)
+  const VBG = 78 * Math.sqrt(M / 1050);
+
+  let html = '';
+  html += `<div class="section-title">🌀 Vitesse limite anti-décrochage en virage</div>`;
+  html += `<div class="notes" style="margin-top:0">Décollage ou remise de gaz, virage immédiat (ex. évitement d'obstacle) — volets ${volet}, virage ${VIRAGE}°.</div>`;
+  html += `<div class="kvline"><span class="k">Ne pas descendre en dessous de</span><span class="v">${VS_virage} kt</span></div>`;
+
+  html += `<div class="section-title">🔄 Remise de gaz — rentrée des volets</div>`;
+  html += `<div class="kvline"><span class="k">Rentrer 2e cran → 1er cran, à partir de</span><span class="v">${V_retrait_30_10} kt</span></div>`;
+  html += `<div class="kvline"><span class="k">Rentrer 1er cran → lisse, à partir de</span><span class="v">${V_retrait_10_0} kt</span></div>`;
+
+  html += `<div class="section-title">⚠️ Second régime de vol (volets ${volet})</div>`;
+  html += `<div class="kvline"><span class="k">VS — début du second régime</span><span class="v">${VS_config} kt</span></div>`;
+  html += `<div class="kvline"><span class="k">Fin du second régime (1,3×VS)</span><span class="v">${V_2eregime} kt</span></div>`;
+  html += `<div class="kvline"><span class="k">Fin de la plage de vol lent (1,45×VS)</span><span class="v">${V_hautvollent} kt</span></div>`;
+
+  html += `<div class="section-title">🪂 VBG — meilleure finesse (référence)</div>`;
+  html += `<div class="kvline"><span class="k">VBG</span><span class="v">${VBG.toFixed(1)} kt</span></div>`;
+
   document.getElementById('p2_out').innerHTML = html;
 }
 
