@@ -187,6 +187,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 
   <button class="btn" onclick="calcTourPiste()">Calculer le tour de piste</button>
   <div id="p3_out" class="result"></div>
+  <div id="p3_diagram" class="result" style="margin-top:10px"></div>
 </div>
 
 <!-- ONGLET 4 : Choix avion (coût / vitesse) -->
@@ -349,6 +350,75 @@ function fmtMinSec(decMin){
   return `${m} min ${s.toString().padStart(2,'0')} s`;
 }
 
+function u_(deg){ const r = deg*Math.PI/180; return [Math.sin(r), -Math.cos(r)]; }
+function ptAt(base, dist, bearing){ const [ux,uy] = u_(bearing); return [base[0]+dist*ux, base[1]+dist*uy]; }
+
+function buildPatternSVG(CAPF, CAPT, CAPD, CAPB){
+  const H=63, W=71, D=118;          // longueurs schématiques des branches (pas à l'échelle)
+  const cx=150, cy=150;
+  const P0=[cx,cy];
+  const P1=ptAt(P0,H,CAPF);
+  const P2=ptAt(P1,W,CAPT);
+  const P3=ptAt(P2,D,CAPD);
+  const P4=ptAt(P3,W,CAPB);
+
+  const mid=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2];
+  const legs = [
+    { p1:P0, p2:P1, cap:CAPF, label:'Finale/décollage' },
+    { p1:P1, p2:P2, cap:CAPT, label:'Traversier' },
+    { p1:P2, p2:P3, cap:CAPD, label:'Vent arrière' },
+    { p1:P3, p2:P4, cap:CAPB, label:'Base' },
+    { p1:P4, p2:P0, cap:CAPF, label:'' } // retour vers la finale, même cap, pas de doublon d'étiquette
+  ];
+
+  // Rose des vents : cercle fixe, N toujours en haut, indépendant du QFU
+  const Rring = 130;
+  let rose = `<circle cx="${cx}" cy="${cy}" r="${Rring}" fill="none" stroke="var(--border-2)" stroke-width="1.5"/>`;
+  for(let d=0; d<360; d+=30){
+    const [ux,uy] = u_(d);
+    const inner = d%90===0 ? Rring-12 : Rring-6;
+    const x1=cx+inner*ux, y1=cy+inner*uy, x2=cx+Rring*ux, y2=cy+Rring*uy;
+    rose += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="var(--border-2)" stroke-width="${d%90===0?2:1}"/>`;
+  }
+  const cardinals = [['N',0],['E',90],['S',180],['O',270]];
+  for(const [txt,deg] of cardinals){
+    const [ux,uy] = u_(deg);
+    const x=cx+(Rring-24)*ux, y=cy+(Rring-24)*uy;
+    rose += `<text x="${x.toFixed(1)}" y="${(y+4).toFixed(1)}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-dim)">${txt}</text>`;
+  }
+
+  // Piste (trait au centre, dans l'axe CAPF/CAPF+180)
+  const [rux,ruy] = u_(CAPF);
+  const rwLen = 16;
+  const rwx1=cx-rwLen*rux, rwy1=cy-rwLen*ruy, rwx2=cx+rwLen*rux, rwy2=cy+rwLen*ruy;
+  const runway = `<line x1="${rwx1.toFixed(1)}" y1="${rwy1.toFixed(1)}" x2="${rwx2.toFixed(1)}" y2="${rwy2.toFixed(1)}" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/>`;
+
+  // Tracé du circuit + flèches de sens + étiquettes de cap
+  let path = `M ${P0[0].toFixed(1)} ${P0[1].toFixed(1)}`;
+  let arrows = '';
+  let labels = '';
+  for(const leg of legs){
+    path += ` L ${leg.p2[0].toFixed(1)} ${leg.p2[1].toFixed(1)}`;
+    const m = mid(leg.p1, leg.p2);
+    const [aux,auy] = u_(leg.cap);
+    // Flèche de sens (petit triangle orienté vers le cap de la branche)
+    const ang = leg.cap;
+    arrows += `<polygon points="0,-6 5,5 -5,5" fill="#4a7fe0" transform="translate(${m[0].toFixed(1)},${m[1].toFixed(1)}) rotate(${ang.toFixed(1)})"/>`;
+    if(leg.label){
+      // Étiquette poussée vers l'extérieur du circuit, dans le sens perpendiculaire à la branche
+      const [oux,ouy] = [m[0]-cx, m[1]-cy];
+      const od = Math.hypot(oux,ouy) || 1;
+      const lx = m[0] + (oux/od)*22, ly = m[1] + (ouy/od)*22;
+      labels += `<text x="${lx.toFixed(1)}" y="${(ly-4).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--val)">${leg.label}</text>`;
+      labels += `<text x="${lx.toFixed(1)}" y="${(ly+10).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">${Math.round(leg.cap)}°</text>`;
+    }
+  }
+  const circuit = `<path d="${path}" fill="none" stroke="#4a7fe0" stroke-width="3"/>`;
+  const plane = `<circle cx="${cx}" cy="${cy}" r="4" fill="var(--accent)"/>`;
+
+  return `<svg viewBox="0 0 300 300" style="width:100%;max-width:340px;display:block;margin:0 auto">${rose}${runway}${circuit}${arrows}${plane}${labels}</svg>`;
+}
+
 function calcTourPiste(){
   const QFU = vv('T_QFU');
   const MD = document.querySelector('input[name="T_MD"]:checked')?.value === '1';
@@ -372,6 +442,7 @@ function calcTourPiste(){
   html += `<div class="kvline"><span class="k">Vent arrière (TW)</span><span class="v">${fmtMinSec(TWDEC)}</span></div>`;
   html += `<div class="kvline"><span class="k">Étape de base (TB)</span><span class="v">${fmtMinSec(TBDEC)}</span></div>`;
   document.getElementById('p3_out').innerHTML = html;
+  document.getElementById('p3_diagram').innerHTML = buildPatternSVG(CAPF, CAPT, CAPD, CAPB);
 }
 
 // ── Onglet 4 : Choix avion (coût total du trajet, formule HP-19BII) ──
