@@ -353,16 +353,19 @@ function calcTourPiste(){
   const QFU = vv('T_QFU');
   const MD = document.querySelector('input[name="T_MD"]:checked')?.value === '1';
   const XNM = vv('T_XNM'), VG = vv('T_VG') || 1;
+  const sign = MD ? 1 : -1;   // droite : virages à droite (+90 à chaque étape) · gauche : virages à gauche (-90)
 
-  const CAPF = mod360(QFU);
-  const CAPD = mod360(QFU + 180);
-  const CAPB = mod360(QFU + 90 * (MD ? 1 : -1));
+  const CAPF = mod360(QFU);                 // étape finale / décollage, face au vent
+  const CAPT = mod360(QFU + 90 * sign);     // étape traversier (1er virage après décollage)
+  const CAPD = mod360(QFU + 180);           // vent arrière (toujours QFU+180, quel que soit le sens)
+  const CAPB = mod360(QFU - 90 * sign);     // étape de base (virage opposé au traversier)
   const TWDEC = 60 * XNM / VG;          // temps vent arrière, minutes décimales
   const TBDEC = 0.6 * TWDEC;            // temps étape de base (règle des 60%)
 
   let html = '';
   html += `<div class="section-title">Caps</div>`;
   html += `<div class="kvline"><span class="k">Étape finale / face au vent (CAPF)</span><span class="v">${CAPF.toFixed(0)}°</span></div>`;
+  html += `<div class="kvline"><span class="k">Traversier (CAPT)</span><span class="v">${CAPT.toFixed(0)}°</span></div>`;
   html += `<div class="kvline"><span class="k">Vent arrière (CAPD)</span><span class="v">${CAPD.toFixed(0)}°</span></div>`;
   html += `<div class="kvline"><span class="k">Étape de base (CAPB)</span><span class="v">${CAPB.toFixed(0)}°</span></div>`;
   html += `<div class="section-title">Temps estimés</div>`;
