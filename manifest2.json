@@ -1,0 +1,15 @@
+{
+  "name": "DR400/160 — Outils 2",
+  "short_name": "DR400 Outils 2",
+  "description": "Outils complémentaires pour DR400/160, partageant QNH/OAT/masse avec l'app principale.",
+  "start_url": "./outils2.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f1d35",
+  "theme_color": "#0f1d35",
+  "icons": [
+    { "src": "icon2-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon2-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
