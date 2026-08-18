@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dr400-outils2-v4';
+const CACHE_NAME = 'dr400-outils2-v5';
 const ASSETS = [
   './outils2.html',
   './manifest2.json',

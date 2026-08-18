@@ -273,6 +273,10 @@ function initShared(){
     const M = (+mvide) + (+mpil) + (+mpax_av) + (+mpax_arg) + (+mpax_ard) + (+mbag)
             + ((+lfg) + (+lfd)) * DENS + (+lfar) * DENS;
     masseEl.value = M.toFixed(1);
+  } else if(masseEl){
+    // Aucune donnée de l'app principale : on recharge la dernière saisie manuelle
+    const masseLocale = localStorage.getItem('outils2_masse_locale');
+    if(masseLocale !== null) masseEl.value = masseLocale;
   }
   syncMasseToTabs();
 }
@@ -294,7 +298,10 @@ document.getElementById('shared_qnh')?.addEventListener('input', function(){
 document.getElementById('shared_oat')?.addEventListener('input', function(){
   if(this.value !== '') localStorage.setItem('hrej_OAT', this.value);
 });
-document.getElementById('shared_masse')?.addEventListener('input', syncMasseToTabs);
+document.getElementById('shared_masse')?.addEventListener('input', function(){
+  if(this.value !== '') localStorage.setItem('outils2_masse_locale', this.value);
+  syncMasseToTabs();
+});
 document.getElementById('V_M')?.addEventListener('input', () => { document.getElementById('V_M').dataset.manual = '1'; });
 document.getElementById('R_M')?.addEventListener('input', () => { document.getElementById('R_M').dataset.manual = '1'; });
 
