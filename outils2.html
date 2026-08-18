@@ -88,7 +88,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 <div id="p1" class="page active">
 
   <fieldset>
-    <legend>🔗 Données partagées (lues depuis l'app principale)</legend>
+    <legend>⚙️ Données de vol (saisie manuelle)</legend>
     <div class="shared-box">
       <div class="lbl">QNH</div>
       <div class="row" style="margin:0;padding:0;border:none;min-height:auto">
@@ -110,14 +110,12 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
         <span class="unit">kg</span>
       </div>
     </div>
-    <button type="button" class="btn-mini" id="btn_refresh" style="width:100%;margin-top:6px">🔄 Actualiser les données partagées</button>
-    <div id="shared_warning"></div>
   </fieldset>
 
   <div class="notes">
-    Ces champs sont modifiables directement ici. QNH et OAT modifiés ici sont réécrits dans le stockage partagé — l'app principale les reprendra à sa prochaine ouverture. La masse totale, elle, reste une surcharge locale à Outils 2 (elle ne réécrit pas les postes détaillés — pilote, passagers, essence — de l'app principale).<br>
-    « 🔄 Actualiser » efface vos saisies manuelles ici et recharge les valeurs actuelles de l'app principale.<br>
+    Sur iPhone, chaque app installée sur l'écran d'accueil a son propre stockage — QNH/OAT/masse saisis dans l'app principale ne remontent donc pas ici automatiquement. Reportez-les à la main ci-dessus avant de passer aux autres onglets.<br>
     Masse utilisée par défaut dans les onglets suivants : celle affichée ci-dessus.
+  </div>
   </div>
 
 </div>
@@ -249,72 +247,49 @@ function readShared(key){
   return val === null ? null : val;
 }
 
-function refreshShared(){
+// Tentative de lecture initiale au chargement (n'a d'effet que si les deux pages partagent
+// réellement le même stockage — par ex. ouvertes toutes les deux dans Safari plutôt qu'en
+// icônes séparées sur l'écran d'accueil). Sinon les champs restent vides et se remplissent à la main.
+function initShared(){
   const qnh = readShared('QNH');
   const oat = readShared('OAT');
+  const qnhEl = document.getElementById('shared_qnh');
+  const oatEl = document.getElementById('shared_oat');
+  if(qnhEl && qnh !== null) qnhEl.value = qnh;
+  if(oatEl && oat !== null) oatEl.value = oat;
 
   const mvide = readShared('MVIDE'), mpil = readShared('MPIL');
   const mpax_av = readShared('MPAX_AV'), mpax_arg = readShared('MPAX_ARG'), mpax_ard = readShared('MPAX_ARD');
   const mbag = readShared('MBAG');
   const lfg = readShared('LFG'), lfd = readShared('LFD'), lfar = readShared('LFAR');
-
   const massInputsPresent = [mvide,mpil,mpax_av,mpax_arg,mpax_ard,mbag,lfg,lfd,lfar].every(x => x !== null);
-
-  const qnhEl = document.getElementById('shared_qnh');
-  const oatEl = document.getElementById('shared_oat');
   const masseEl = document.getElementById('shared_masse');
-
-  if(qnhEl && !qnhEl.dataset.manual) qnhEl.value = qnh !== null ? qnh : '';
-  if(oatEl && !oatEl.dataset.manual) oatEl.value = oat !== null ? oat : '';
-
-  let M = null;
-  if(massInputsPresent){
-    M = (+mvide) + (+mpil) + (+mpax_av) + (+mpax_arg) + (+mpax_ard) + (+mbag)
-      + ((+lfg) + (+lfd)) * DENS + (+lfar) * DENS;
-    if(masseEl && !masseEl.dataset.manual) masseEl.value = M.toFixed(1);
-  } else if(masseEl && !masseEl.dataset.manual){
-    masseEl.value = '';
+  if(massInputsPresent && masseEl){
+    const M = (+mvide) + (+mpil) + (+mpax_av) + (+mpax_arg) + (+mpax_ard) + (+mbag)
+            + ((+lfg) + (+lfd)) * DENS + (+lfar) * DENS;
+    masseEl.value = M.toFixed(1);
   }
-
-  // Propage la masse affichée (auto ou saisie manuelle) vers les onglets qui l'utilisent
-  const masseAffichee = masseEl ? masseEl.value : '';
-  if(masseAffichee !== ''){
-    const vm = document.getElementById('V_M');
-    if(vm && !vm.dataset.manual) vm.value = masseAffichee;
-    const rm = document.getElementById('R_M');
-    if(rm && !rm.dataset.manual) rm.value = masseAffichee;
-  }
-
-  const warnEl = document.getElementById('shared_warning');
-  if(qnh === null && oat === null && !massInputsPresent && !qnhEl?.dataset.manual && !oatEl?.dataset.manual && !masseEl?.dataset.manual){
-    warnEl.innerHTML = `<div class="banner-warn">⚠️ Aucune donnée trouvée dans l'app principale. Vous pouvez les saisir directement ici, ou ouvrir d'abord l'app principale (même domaine) pour qu'elles apparaissent automatiquement.</div>`;
-  } else {
-    warnEl.innerHTML = '';
-  }
+  syncMasseToTabs();
 }
 
-// Saisie manuelle QNH/OAT : réécrite dans le stockage partagé (l'app principale la reprendra)
+// Propage la masse saisie (ou trouvée) ici vers les onglets qui l'utilisent par défaut
+function syncMasseToTabs(){
+  const masseEl = document.getElementById('shared_masse');
+  const val = masseEl ? masseEl.value : '';
+  if(val === '') return;
+  const vm = document.getElementById('V_M');
+  if(vm && !vm.dataset.manual) vm.value = val;
+  const rm = document.getElementById('R_M');
+  if(rm && !rm.dataset.manual) rm.value = val;
+}
+
 document.getElementById('shared_qnh')?.addEventListener('input', function(){
-  this.dataset.manual = '1';
   if(this.value !== '') localStorage.setItem('hrej_QNH', this.value);
 });
 document.getElementById('shared_oat')?.addEventListener('input', function(){
-  this.dataset.manual = '1';
   if(this.value !== '') localStorage.setItem('hrej_OAT', this.value);
 });
-// Saisie manuelle masse totale : reste locale à Outils 2 (ne réécrit pas les postes détaillés de l'app principale)
-document.getElementById('shared_masse')?.addEventListener('input', function(){
-  this.dataset.manual = '1';
-  refreshShared();
-});
-// Actualiser : efface les saisies manuelles et recharge depuis l'app principale
-document.getElementById('btn_refresh')?.addEventListener('click', () => {
-  ['shared_qnh','shared_oat','shared_masse','V_M','R_M'].forEach(id => {
-    const el = document.getElementById(id);
-    if(el) delete el.dataset.manual;
-  });
-  refreshShared();
-});
+document.getElementById('shared_masse')?.addEventListener('input', syncMasseToTabs);
 document.getElementById('V_M')?.addEventListener('input', () => { document.getElementById('V_M').dataset.manual = '1'; });
 document.getElementById('R_M')?.addEventListener('input', () => { document.getElementById('R_M').dataset.manual = '1'; });
 
@@ -505,10 +480,6 @@ function calcROCDensite(){
   document.getElementById('p5_out').innerHTML = html;
 }
 
-document.addEventListener('visibilitychange', () => { if(!document.hidden) refreshShared(); });
-window.addEventListener('pageshow', refreshShared);
-window.addEventListener('focus', refreshShared);
-
 // ── Navigation onglets (prêt pour l'ajout de nouveaux onglets) ──
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -519,7 +490,7 @@ document.querySelectorAll('.tab').forEach(tab => {
   });
 });
 
-refreshShared();
+initShared();
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
