@@ -361,7 +361,10 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
       <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="OBS_ACTIVE" checked onchange="updateZvUI(); calcAll()" style="width:20px;height:20px"> <span>Il y a un obstacle à dégager sur ce trajet</span></label>
     </div>
     <div id="obs_fields">
-      <div class="row"><label>Altitude de l'obstacle (IGN)</label><input id="OBS_ALTITUDE" type="number" step="10" value="1800"><span class="unit">ft MSL</span></div>
+      <div class="row"><label>Altitude de l'obstacle (IGN) <span id="OBS_ALTITUDE_SYNC" class="sync-tag"></span></label><input id="OBS_ALTITUDE" type="number" step="10" value="1800"><span class="unit">ft MSL</span></div>
+      <div class="row" style="border:none;padding-top:0">
+        <button type="button" class="btn-mini" id="btn_sync_obs">🔄 Resynchroniser sur onglet 6·Col</button>
+      </div>
       <div class="row"><label>Marge au-dessus de l'obstacle</label><input id="OBS_MARGE" type="number" step="50" value="500"><span class="unit">ft</span></div>
       <div class="row"><label>Correction thermique <span style="font-size:10px;color:var(--text-dim)">(grand froid / montagne)</span></label>
         <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="OBS_THERMO" onchange="updateZvUI(); calcAll()" style="width:20px;height:20px"> <span>Activer</span></label>
@@ -369,6 +372,9 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
       <div id="obs_thermo_fields" class="hidden">
         <div class="row"><label>OAT <span style="font-size:10px;color:var(--text-dim)">(auto onglet 4, modifiable)</span></label><input id="OBS_OAT" type="number" step="1" value="15"><span class="unit">°C</span></div>
         <div class="row"><label>QNH <span style="font-size:10px;color:var(--text-dim)">(auto onglet 4, modifiable)</span></label><input id="OBS_QNH" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
+      </div>
+      <div class="row"><label>Vérifier aussi la performance de montée <span style="font-size:10px;color:var(--text-dim)">(réutilise onglet 6·Col)</span></label>
+        <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="OBS_PERF" checked onchange="calcAll()" style="width:20px;height:20px"> <span>Activer</span></label>
       </div>
     </div>
   </fieldset>
@@ -383,6 +389,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
     3. Conversion en Kelvin : <b>Tk = T + 273,15</b> (réelle et ISA)<br>
     4. Altitude vraie : <b>Zv = Zi × (Tk_réelle / Tk_ISA)</b><br>
     Référence : niveau de la mer (QNH). Voir le tuto joint pour le détail pas à pas et la méthode manuelle alternative (approximation linéaire, calculette).<br>
+    <b>Performance de montée :</b> réutilise le temps de montée et le Vz moyen (Simpson) calculés dans l'onglet 6·Col, sur la base de la distance/vitesse/vent/cap saisis là-bas.<br>
     <b>Usage non certifié — vérifier avec les abaques officiels</b>
   </div>
 </div>
@@ -470,7 +477,7 @@ function saveAll(){
     const el = document.querySelector(`input[name="${name}"]:checked`);
     if(el) localStorage.setItem('hrej_'+name, el.value);
   });
-  ['ZONE_ACTIVE','OBS_ACTIVE','OBS_THERMO'].forEach(id => {
+  ['ZONE_ACTIVE','OBS_ACTIVE','OBS_THERMO','OBS_PERF'].forEach(id => {
     const el = document.getElementById(id);
     if(el) localStorage.setItem('hrej_'+id, el.checked ? '1' : '0');
   });
@@ -494,10 +501,16 @@ function loadAll(){
   if(localStorage.getItem('hrej_OAT_ICE_SYNC') === null) localStorage.setItem('hrej_OAT_ICE_SYNC', 'auto');
   if(localStorage.getItem('hrej_OAT_TH_SYNC') === null) localStorage.setItem('hrej_OAT_TH_SYNC', 'auto');
   if(localStorage.getItem('hrej_RH_TH_SYNC') === null) localStorage.setItem('hrej_RH_TH_SYNC', 'auto');
+  if(localStorage.getItem('hrej_OBS_ALTITUDE_SYNC') === null) localStorage.setItem('hrej_OBS_ALTITUDE_SYNC', 'auto');
   if(localStorage.getItem('hrej_OAT_ICE_SYNC') === 'auto'){
     const oat4 = document.getElementById('OAT');
     const oatIce = document.getElementById('OAT_ICE');
     if(oat4 && oatIce) oatIce.value = oat4.value;
+  }
+  if(localStorage.getItem('hrej_OBS_ALTITUDE_SYNC') === 'auto'){
+    const altcol = document.getElementById('ALTCOL');
+    const obsAlt = document.getElementById('OBS_ALTITUDE');
+    if(altcol && obsAlt) obsAlt.value = altcol.value;
   }
   // Restaurer les radio buttons Zv
   ['ZONE_REF','ZONE_DIRECTION'].forEach(name => {
@@ -511,8 +524,11 @@ function loadAll(){
     const saved = localStorage.getItem('hrej_'+id);
     if(saved !== null){ const el = document.getElementById(id); if(el) el.checked = saved === '1'; }
   });
+  const obsPerfSaved = localStorage.getItem('hrej_OBS_PERF');
+  if(obsPerfSaved !== null){ const el = document.getElementById('OBS_PERF'); if(el) el.checked = obsPerfSaved === '1'; }
   updateIceModeUI();
   updateOatSyncUI();
+  updateObsAltSyncUI();
   updateZvUI();
 }
 
@@ -539,6 +555,24 @@ function updateOatSyncUI(){
     tag.className = 'sync-tag manual';
     btn.classList.remove('disabled');
     btn.textContent = '🔄 Resynchroniser sur onglet 4';
+  }
+}
+
+function updateObsAltSyncUI(){
+  const syncState = localStorage.getItem('hrej_OBS_ALTITUDE_SYNC') || 'auto';
+  const tag = document.getElementById('OBS_ALTITUDE_SYNC');
+  const btn = document.getElementById('btn_sync_obs');
+  if(!tag || !btn) return;
+  if(syncState === 'auto'){
+    tag.textContent = '🔗 lié onglet 6·Col';
+    tag.className = 'sync-tag synced';
+    btn.classList.add('disabled');
+    btn.textContent = '✓ Déjà synchronisé sur onglet 6·Col';
+  } else {
+    tag.textContent = '✋ manuel';
+    tag.className = 'sync-tag manual';
+    btn.classList.remove('disabled');
+    btn.textContent = '🔄 Resynchroniser sur onglet 6·Col';
   }
 }
 
@@ -614,13 +648,7 @@ function calc2(){
 }
 
 // ============================================================
-// ONGLET 3 — Centrage
-// Limites formule HP-19 (référence opérationnelle) :
-//   Limite AV : 250 mm si M ≤ 650 kg
-//               250 + 0,5×(M-650) si 650 < M ≤ 950 kg
-//               450 mm si M > 950 kg
-//   Limite AR : 400 + 0,333×(M-650) si M ≤ 950 kg
-//               550 mm si M > 950 kg
+// ONGLET 3 — Centrage — limites formule HP-19
 // ============================================================
 function calc3(){
   const c1 = calc1();
@@ -628,7 +656,7 @@ function calc3(){
   const MVIDE = v('MVIDE'), MPIL = v('MPIL');
   const MPAX_AV = v('MPAX_AV'), MPAX_ARG = v('MPAX_ARG'), MPAX_ARD = v('MPAX_ARD');
   const MBAG = v('MBAG');
-  const MPAX = MPAX_AV + MPAX_ARG + MPAX_ARD; // total pour info / appoint
+  const MPAX = MPAX_AV + MPAX_ARG + MPAX_ARD;
   const mFuelLFAV = c1.LFAV * DENS;
   const mFuelLFAR = c1.LFAR * DENS;
   const M = MVIDE + MPIL + MPAX_AV + MPAX_ARG + MPAX_ARD + MBAG + mFuelLFAV + mFuelLFAR;
@@ -637,7 +665,6 @@ function calc3(){
                + mFuelLFAV * ARM.lfav + mFuelLFAR * ARM.lfar;
   const CG = moment / Math.max(M, 0.001);
 
-  // Limites HP-19 (formule de référence opérationnelle)
   function limAv(m){
     if(m <= 650) return 250;
     if(m <= 950) return 250 + 0.5 * (m - 650);
@@ -657,7 +684,6 @@ function calc3(){
   else if(CG > CGar)  { verdict = '❌ CG TROP ARRIÈRE';       vClass = 'verdict-bad'; }
   else                { verdict = '✅ CENTRAGE OK';            vClass = 'verdict-ok'; }
 
-  // Répartition appoint (formule HP-19 — inchangée)
   const APPOINT = c2.appoint;
   const X = M + DENS * APPOINT;
   const FA_app = limAv(X);
@@ -694,7 +720,7 @@ function calc3(){
 }
 
 // ============================================================
-// ONGLET 4 — Décollage (inchangé)
+// ONGLET 4 — Décollage
 // ============================================================
 function distBeton(M, PA, dT, SLOPE){
   function b1(t){ return t <= 0 ? 360 + 1.75*(t+20) : 395 + 2*t; }
@@ -756,17 +782,22 @@ function calc4(){
 }
 
 // ============================================================
-// ONGLET 5 — Col (inchangé)
+// ONGLET 5 — Col
 // ============================================================
+let LAST_C5 = null;
+
 function calc5(){
   const c3 = calc3();
   const ALT0 = v('ALT0'), QNH = v('QNH'), OAT = v('OAT');
   const ALTCOL = v('ALTCOL');
-  const ALTCOL_PROG = v('ALTCOL_PROG') || ALTCOL; // si non renseigné = même que réel
+  const ALTCOL_PROG = v('ALTCOL_PROG') || ALTCOL;
   const DIST = v('DIST_COL'), VIAS = v('VIAS'), CAP = v('CAP');
   const TLEV = v('TLEV'), ZLEV = v('ZLEV');
   const M = c3.M, WDIR = v('WDIR'), WSPD = v('WSPD');
-  const MARGE_MIN = v('MARGE_MIN') || 1000;
+  // Respecte une marge de 0 ft saisie volontairement : ne retombe sur 1000 ft
+  // que si le champ est vide ou invalide, jamais si l'utilisateur a tapé 0.
+  const MARGE_MIN_raw = document.getElementById('MARGE_MIN').value;
+  const MARGE_MIN = (MARGE_MIN_raw === '' || isNaN(parseFloat(MARGE_MIN_raw))) ? 1000 : parseFloat(MARGE_MIN_raw);
   document.getElementById('ALTDEP_REF').textContent = ALT0.toFixed(0);
   document.getElementById('QNH_REF').textContent = QNH.toFixed(0);
   document.getElementById('OATDEP_REF').textContent = OAT.toFixed(1);
@@ -817,11 +848,12 @@ function calc5(){
   html += `<div class="kvline"><span class="k">Temps montée</span><span class="v">${tempsMin.toFixed(1)} min</span></div>`;
   html += `<div class="verdict-box ${cls}">${msg}<span class="big">${MARGE.toFixed(0)} ft</span><span style="font-size:11px;opacity:0.8">Marge au col — altitude programmée ${ALTCOL_PROG} ft / col réel ${ALTCOL} ft / objectif ≥ ${MARGE_MIN} ft</span></div>`;
   document.getElementById('p5_out').innerHTML = html;
-  return { CAP, WDIR, WSPD };
+  LAST_C5 = { CAP, WDIR, WSPD, ALT0, ALTCOL, tempsMin, vzMoy, DIST, VIAS };
+  return LAST_C5;
 }
 
 // ============================================================
-// ONGLET 6 — Wave (inchangé)
+// ONGLET 6 — Wave
 // ============================================================
 function calc6(){
   const c5 = calc5();
@@ -872,7 +904,7 @@ function calc6(){
 }
 
 // ============================================================
-// ONGLET 7 — Givrage (inchangé)
+// ONGLET 7 — Givrage
 // ============================================================
 function calc7(){
   const OAT = v('OAT_ICE');
@@ -925,50 +957,9 @@ function calc7(){
 
 // ============================================================
 // ONGLET 8 — Atterrissage
-// Source : Manuel de vol DR400/160 Ed.1 du 10-05-1972
-// Volets 2e cran | Vent nul de base
-// Distances depuis passage 15 m jusqu'à l'arrêt
-//
-// Tableau : [Altitude ft][dT index] → distance (m)
-// dT = OAT - ISA_locale
-//
-// Points du tableau constructeur :
-//   Alt 0 ft  : Std-20(-35°C écart), Std+15(0°C écart), Std+20(+5°C écart)
-//   Alt 4000ft : Std-20(-20°C écart), Std+7(0°C écart),  Std+20(+13°C écart)
-//   Alt 8000ft : Std-1(-1°C écart),   Std+20(+20°C écart)
-//
-// On simplifie en utilisant l'interpolation sur PA et dT
-// avec les valeurs lues aux points ISA (dT=0) et ISA+20 (dT=+20)
-// pour chaque altitude, pour les deux masses de référence.
-//
-// Masse 1045 kg — Frein modéré (béton) :
-//   PA=0    dT=0 → 545  dT=+20 → 575
-//   PA=4000 dT=0 → 600  dT=+20 → 635
-//   PA=8000 dT=0 → 660  dT=+20 → 700   (dT=-1≈0 → 660)
-//
-// Masse 1045 kg — Sans frein (herbe) :
-//   PA=0    dT=0 → 670  dT=+20 → 705
-//   PA=4000 dT=0 → 740  dT=+20 → 785
-//   PA=8000 dT=0 → 820  dT=+20 → 875
-//
-// Masse 845 kg — Frein modéré (béton) :
-//   PA=0    dT=0 → 460  dT=+20 → 485
-//   PA=4000 dT=0 → 505  dT=+20 → 535
-//   PA=8000 dT=0 → 555  dT=+20 → 585
-//
-// Masse 845 kg — Sans frein (herbe) :
-//   PA=0    dT=0 → 560  dT=+20 → 595
-//   PA=4000 dT=0 → 615  dT=+20 → 655
-//   PA=8000 dT=0 → 685  dT=+20 → 725
 // ============================================================
-
-// Données tableau constructeur : distLDG[type][masseRef][paRef] = {dt0, dt20}
-// type : 'beton' | 'herbe'
-// masseRef : 0 = 845 kg, 1 = 1045 kg
-// paRef : 0 = 0ft, 1 = 4000ft, 2 = 8000ft
 const LDG_TABLE = {
   beton: {
-    // [PA=0ft, PA=4000ft, PA=8000ft]
     m845:  [ {dt0: 460, dt20: 485}, {dt0: 505, dt20: 535}, {dt0: 555, dt20: 585} ],
     m1045: [ {dt0: 545, dt20: 575}, {dt0: 600, dt20: 635}, {dt0: 660, dt20: 700} ]
   },
@@ -981,13 +972,9 @@ const LDG_PA_REFS = [0, 4000, 8000];
 const LDG_M_REFS  = [845, 1045];
 
 function interpLDG(type, M, PA, dT){
-  // 1. Clamp dT entre 0 et +20 (extrapolation linéaire simple hors plage)
   const tbl = LDG_TABLE[type];
-
-  // Fonction : distance pour une masseRef donnée, PA donné, dT donné
   function distForMassRef(mRef, pa, dt){
     const row = (mRef === 845) ? tbl.m845 : tbl.m1045;
-    // Interpolation sur PA entre les trois paliers 0 / 4000 / 8000 ft
     let d;
     if(pa <= 0){
       d = row[0].dt0 + (row[0].dt20 - row[0].dt0) * (dt / 20);
@@ -1002,7 +989,6 @@ function interpLDG(type, M, PA, dT){
       const d8 = row[2].dt0 + (row[2].dt20 - row[2].dt0) * (dt / 20);
       d = d4 + f * (d8 - d4);
     } else {
-      // PA > 8000 ft : extrapolation linéaire depuis PA=4000 et PA=8000
       const f = (pa - 4000) / 4000;
       const d4 = row[1].dt0 + (row[1].dt20 - row[1].dt0) * (dt / 20);
       const d8 = row[2].dt0 + (row[2].dt20 - row[2].dt0) * (dt / 20);
@@ -1010,8 +996,6 @@ function interpLDG(type, M, PA, dT){
     }
     return d;
   }
-
-  // 2. Interpolation sur la masse entre 845 et 1045 kg
   const mClamped = Math.max(845, Math.min(1045, M));
   const massCoef = (mClamped - 845) / 200;
   const d845  = distForMassRef(845,  PA, dT);
@@ -1019,11 +1003,8 @@ function interpLDG(type, M, PA, dT){
   return d845 + massCoef * (d1045 - d845);
 }
 
-// Correction vent de face (tableau constructeur)
-// 10 kt → ×0,80 | 20 kt → ×0,66 | 30 kt → ×0,55
 function correcVent(dist, wface){
   if(wface <= 0) return dist;
-  // Interpolation linéaire entre les points constructeur
   let coef;
   if(wface <= 10){
     coef = 1 - (1 - 0.80) * (wface / 10);
@@ -1032,7 +1013,7 @@ function correcVent(dist, wface){
   } else if(wface <= 30){
     coef = 0.66 - (0.66 - 0.55) * ((wface - 20) / 10);
   } else {
-    coef = 0.55; // au-delà de 30 kt, on garde 0,55
+    coef = 0.55;
   }
   return dist * coef;
 }
@@ -1047,13 +1028,11 @@ function calc8(){
   const ldgEl = document.querySelector('input[name="LDG"]:checked');
   const LDG = ldgEl ? ldgEl.value : 'beton';
 
-  // Carburant consommé estimé (auto)
   const DIST    = v('DIST'), VGS = v('VGS'), CONSO = v('CONSO');
   const MONTEE  = v('MONTEE'), DESCENTE = v('DESCENTE'), TAXI = v('TAXI');
   const fuel_auto = (DIST / Math.max(VGS, 0.001)) * CONSO + MONTEE + DESCENTE + TAXI;
   const LF_total = v('LFG') + v('LFAR') + v('LFD');
 
-  // Carburant restant estimé
   const syncLF = localStorage.getItem('hrej_LF_LDG_SYNC') || 'auto';
   const LF_restant_auto = Math.max(0, LF_total - fuel_auto);
   if(syncLF === 'auto'){
@@ -1063,7 +1042,6 @@ function calc8(){
   }
   const LF_restant = v('LF_LDG') >= 0 ? v('LF_LDG') : LF_restant_auto;
 
-  // Masse atterrissage
   const M_auto = Math.min(M_MAX_LDG, Math.max(M_MIN, c3.M - (LF_total - LF_restant) * 0.72));
   const syncLDG = localStorage.getItem('hrej_M_LDG_SYNC') || 'auto';
   if(syncLDG === 'auto'){
@@ -1073,7 +1051,6 @@ function calc8(){
   }
   const M = v('M_LDG') || M_auto;
 
-  // Références auto
   document.getElementById('OAT_LDG_REF').textContent = OAT.toFixed(1);
   document.getElementById('ALT_LDG_REF').textContent = ALT0.toFixed(0);
   document.getElementById('QNH_LDG_REF').textContent = QNH.toFixed(0);
@@ -1086,7 +1063,6 @@ function calc8(){
   const D_vent = correcVent(D_raw, WFACE);
   const D = Math.max(0, 5 * Math.floor(D_vent / 5 + 0.5));
 
-  // Comparatif béton / herbe (vent nul)
   const D_beton_raw = interpLDG('beton', M, PA, dT);
   const D_herbe_raw = interpLDG('herbe', M, PA, dT);
   const D_beton = Math.max(0, 5 * Math.floor(correcVent(D_beton_raw, WFACE) / 5 + 0.5));
@@ -1121,8 +1097,7 @@ function calc8(){
 }
 
 // ============================================================
-// ============================================================
-// ONGLET 9 — Altitude vraie (Zv) — 3 modes
+// ONGLET 9 — Altitude vraie (Zv) — intégrée avec la performance de montée (onglet 6·Col)
 // ============================================================
 function updateZvUI(){
   const zoneActive = document.getElementById('ZONE_ACTIVE').checked;
@@ -1137,13 +1112,9 @@ function updateZvUI(){
   document.getElementById('obs_thermo_fields').classList.toggle('hidden', !thermoOn);
 }
 
-// ── Méthode OACI exacte (ratio de températures absolues, Kelvin) ──
-// Zv = Zi × (T_réelle_K / T_ISA_K), T_ISA calculée à l'altitude-pression Zi
-// Référence : niveau de la mer (QNH), lapse rate ISA = 1,98 °C/1000 ft
 function isaTempC(PA_ft){ return 15 - 1.98 * (PA_ft / 1000); }
 function pressureAltitude(Zi, QNH){ return Zi + (1013 - QNH) * 27; }
 
-// Altitude vraie obtenue en affichant Zi, avec correction thermique (calcul direct)
 function zvAtZi(Zi, OAT, QNH){
   const PA = pressureAltitude(Zi, QNH);
   const ISA_C = isaTempC(PA);
@@ -1154,9 +1125,6 @@ function zvAtZi(Zi, OAT, QNH){
   return { Zv: Zi * ratio, dT, PA, ratio };
 }
 
-// Résout Zi (arrondi) tel que Zv(Zi) = target, par résolution itérative
-// (le ratio dépend de PA qui dépend de Zi : on converge en quelques itérations)
-// roundMode: 'up' (ceil, pour garantir de dégager un obstacle) ou 'down' (floor, pour garantir de rester sous un plafond)
 function resolveZi(target, OAT, QNH, roundMode){
   let Zi_it = target;
   for(let i=0; i<20; i++){
@@ -1169,6 +1137,13 @@ function resolveZi(target, OAT, QNH, roundMode){
 function calc9(){
   const zoneActive = document.getElementById('ZONE_ACTIVE').checked;
   const obsActive = document.getElementById('OBS_ACTIVE').checked;
+
+  // Synchronisation altitude obstacle ← ALTCOL (onglet 6·Col), sauf si l'utilisateur l'a modifiée manuellement
+  const obsAltEl = document.getElementById('OBS_ALTITUDE');
+  if((localStorage.getItem('hrej_OBS_ALTITUDE_SYNC') || 'auto') === 'auto'){
+    const altcolEl = document.getElementById('ALTCOL');
+    if(altcolEl && obsAltEl.value !== altcolEl.value) obsAltEl.value = altcolEl.value;
+  }
 
   if(!zoneActive && !obsActive){
     document.getElementById('p9_out').innerHTML = `<div class="banner-warn">⚠️ Cochez au moins une contrainte (zone et/ou obstacle) pour lancer le calcul.</div>`;
@@ -1229,12 +1204,10 @@ function calc9(){
   const hasUpper = upperBound < Infinity;
   const compatible = lowerBound <= upperBound;
 
-  // Altitude recommandée pour évaluer les marges réelles obtenues
   const recommended = compatible ? (hasUpper ? upperBound : lowerBound) : null;
 
   let html = '';
 
-  // ── Verdicts explicites par contrainte (en tête, langage pilote) ──
   if(compatible && recommended !== null){
     if(zoneActive){
       const margeReelle = zoneIsAbove ? recommended - zoneLimite : zoneLimite - recommended;
@@ -1255,7 +1228,38 @@ function calc9(){
     html += `<div class="banner-bad">⚠️ Ces deux exigences sont incompatibles — contournement nécessaire, aucune altitude ne convient aux deux à la fois.</div>`;
   }
 
-  // ── Avertissements de bon sens opérationnel ──
+  // ── NOUVEAU : vérification de performance de montée (réutilise onglet 6·Col) ──
+  const obsPerfOn = document.getElementById('OBS_PERF') ? document.getElementById('OBS_PERF').checked : false;
+  let perfDetail = '';
+  if(obsActive && obsPerfOn && compatible && recommended !== null){
+    if(!LAST_C5 || !LAST_C5.tempsMin || LAST_C5.tempsMin <= 0){
+      html += `<div class="banner-warn">⚠️ Performance de montée non vérifiée — renseignez d'abord la distance et la vitesse dans l'onglet 6·Col.</div>`;
+    } else {
+      // Altitude atteignable au niveau du col compte tenu du temps/distance/Vz calculés en onglet 6·Col
+      const altAtteignable = LAST_C5.ALT0 + LAST_C5.vzMoy * LAST_C5.tempsMin;
+      const margePerf = altAtteignable - recommended;
+      const memeObstacle = Math.abs(LAST_C5.ALTCOL - obstacle) < 1;
+
+      if(!memeObstacle){
+        html += `<div class="banner-warn">⚠️ L'altitude de l'obstacle diffère entre onglet 6·Col (${LAST_C5.ALTCOL.toFixed(0)} ft) et cette contrainte (${obstacle.toFixed(0)} ft) — vérifiez la synchronisation avant de vous fier à la vérification de performance ci-dessous.</div>`;
+      }
+
+      if(margePerf >= 0){
+        html += `<div class="banner-ok">✅ Performance : vous aurez le temps de monter à ${recommended.toFixed(0)} ft avant le col (marge de ${margePerf.toFixed(0)} ft, en ${LAST_C5.tempsMin.toFixed(1)} min sur ${LAST_C5.DIST} NM)</div>`;
+      } else {
+        html += `<div class="banner-bad">❌ Performance : vous n'aurez PAS le temps de monter à ${recommended.toFixed(0)} ft avant d'arriver au col (il vous manquerait ${Math.abs(margePerf).toFixed(0)} ft) — il faut monter plus tôt ou plus loin du relief</div>`;
+      }
+
+      perfDetail = `<div class="section-title">Détail — performance de montée (données onglet 6·Col)</div>`
+        + `<div class="kvline"><span class="k">Distance terrain→col</span><span class="v">${LAST_C5.DIST} NM</span></div>`
+        + `<div class="kvline"><span class="k">Vitesse indiquée (VIAS)</span><span class="v">${LAST_C5.VIAS} kt</span></div>`
+        + `<div class="kvline"><span class="k">Vz moyen (Simpson)</span><span class="v">${LAST_C5.vzMoy.toFixed(0)} ft/min</span></div>`
+        + `<div class="kvline"><span class="k">Temps de montée</span><span class="v">${LAST_C5.tempsMin.toFixed(1)} min</span></div>`
+        + `<div class="kvline"><span class="k">Altitude atteignable au col</span><span class="v">${altAtteignable.toFixed(0)} ft</span></div>`
+        + `<div class="kvline"><span class="k">Marge de performance</span><span class="v ${margePerf>=0?'ok':'bad'}">${margePerf>=0?'+':''}${margePerf.toFixed(0)} ft</span></div>`;
+    }
+  }
+
   if((zoneActive && zoneMarge === 0) || (obsActive && obsMargeDemandee === 0)){
     html += `<div class="banner-warn">⚠️ Marge à 0 ft sur au moins une contrainte : la fourchette calculée est la limite technique absolue, sans aucune tolérance de sécurité (turbulence, imprécision altimétrique...). Ne pas voler sur ces chiffres tels quels — remettez une marge réaliste (300–500 ft) avant de choisir une altitude.</div>`;
   }
@@ -1275,39 +1279,32 @@ function calc9(){
     }
   }
 
-  html += zoneDetail + obsDetail;
+  html += zoneDetail + obsDetail + perfDetail;
   document.getElementById('p9_out').innerHTML = html;
+  updateObsAltSyncUI();
 }
 
 
 // ============================================================
 // ONGLET 10 — Risque thermique pilote (tableau FFA)
-// OAT : lié onglet 4 par défaut, modifiable
-// RH  : lié onglet 7 si mode RH, sinon saisie directe
 // ============================================================
 function calc10(){
-  // Sync OAT depuis onglet 4 si auto
   if((localStorage.getItem('hrej_OAT_TH_SYNC') || 'auto') === 'auto'){
     document.getElementById('OAT_TH').value = document.getElementById('OAT').value;
   }
-  // Sync RH depuis onglet 7 si auto ET si mode RH dans givrage
   if((localStorage.getItem('hrej_RH_TH_SYNC') || 'auto') === 'auto'){
     const iceMode = document.querySelector('input[name="ICEMODE"]:checked');
     if(!iceMode || iceMode.value === 'rh'){
       document.getElementById('RH_TH').value = document.getElementById('RH').value;
     }
-    // Si mode dew point dans givrage : on laisse RH_TH tel quel pour saisie manuelle
   }
 
   const OAT = v('OAT_TH');
   const RH  = v('RH_TH');
 
-  // Tableau FFA — frontières lues sur le diagramme
-  // zone(OAT, RH) → 4=Rouge, 3=Orange, 2=Jaune, 1=Vert
   function zone(oat, rh){
     const t = Math.round(oat);
-    // ── ROUGE ──────────────────────────────────────────────
-    if(t >= 45)                  return 4; // toute HR
+    if(t >= 45)                  return 4;
     if(t === 44 && rh >= 10)     return 4;
     if(t === 43 && rh >= 20)     return 4;
     if(t === 42 && rh >= 20)     return 4;
@@ -1318,8 +1315,7 @@ function calc10(){
     if(t === 37 && rh >= 50)     return 4;
     if(t === 36 && rh >= 60)     return 4;
     if(t === 35 && rh >= 50)     return 4;
-    // ── ORANGE ─────────────────────────────────────────────
-    if(t === 44 && rh >= 10)     return 3; // déjà rouge
+    if(t === 44 && rh >= 10)     return 3;
     if(t === 43 && rh >= 10)     return 3;
     if(t === 42 && rh >= 10)     return 3;
     if(t === 41 && rh >= 10)     return 3;
@@ -1333,7 +1329,6 @@ function calc10(){
     if(t === 33 && rh >= 60)     return 3;
     if(t === 32 && rh >= 60)     return 3;
     if(t === 31 && rh >= 90)     return 3;
-    // ── JAUNE ──────────────────────────────────────────────
     if(t >= 38 && rh >= 10)      return 2;
     if(t === 37 && rh >= 10)     return 2;
     if(t === 36 && rh >= 10)     return 2;
@@ -1345,7 +1340,6 @@ function calc10(){
     if(t === 30 && rh >= 40)     return 2;
     if(t === 29 && rh >= 60)     return 2;
     if(t === 28 && rh >= 80)     return 2;
-    // ── VERT ───────────────────────────────────────────────
     return 1;
   }
 
@@ -1391,12 +1385,7 @@ function calcAll(){
   } catch(e) { console.error(e); }
 }
 
-document.querySelectorAll('input').forEach(el => {
-  el.addEventListener('input', calcAll);
-  el.addEventListener('change', calcAll);
-});
-
-// ── Listeners sync OAT onglet 4 → OAT_ICE (onglet 7) ──────
+// ── Listeners sync OAT onglet 4 → OAT_ICE (onglet 7) / OAT_TH (onglet 10) ──
 document.getElementById('OAT').addEventListener('input', () => {
   if((localStorage.getItem('hrej_OAT_ICE_SYNC') || 'auto') === 'auto'){
     document.getElementById('OAT_ICE').value = document.getElementById('OAT').value;
@@ -1468,7 +1457,7 @@ document.getElementById('btn_sync_rh_th').addEventListener('click', () => {
   calcAll();
 });
 
-// Sync OBS_QNH/OBS_OAT ← QNH/OAT (onglet 4) à chaque changement
+// ── Sync OBS_QNH/OBS_OAT ← QNH/OAT (onglet 4) ──────────────
 document.getElementById('QNH').addEventListener('input', () => {
   const obsQnh = document.getElementById('OBS_QNH');
   if(obsQnh && !obsQnh.dataset.manual){
@@ -1488,12 +1477,31 @@ document.getElementById('OBS_OAT').addEventListener('input', () => {
   document.getElementById('OBS_OAT').dataset.manual = '1';
 });
 
+// ── NOUVEAU : Sync OBS_ALTITUDE ← ALTCOL (onglet 6·Col) ────
+document.getElementById('ALTCOL').addEventListener('input', () => {
+  if((localStorage.getItem('hrej_OBS_ALTITUDE_SYNC') || 'auto') === 'auto'){
+    document.getElementById('OBS_ALTITUDE').value = document.getElementById('ALTCOL').value;
+  }
+});
+document.getElementById('OBS_ALTITUDE').addEventListener('input', () => {
+  if(document.getElementById('OBS_ALTITUDE').value !== document.getElementById('ALTCOL').value){
+    localStorage.setItem('hrej_OBS_ALTITUDE_SYNC', 'manual');
+    updateObsAltSyncUI();
+  }
+});
+document.getElementById('btn_sync_obs').addEventListener('click', () => {
+  localStorage.setItem('hrej_OBS_ALTITUDE_SYNC', 'auto');
+  document.getElementById('OBS_ALTITUDE').value = document.getElementById('ALTCOL').value;
+  updateObsAltSyncUI();
+  calcAll();
+});
+
 // ── Listeners sync LF_LDG (carburant restant) ──────────────
 document.getElementById('LF_LDG').addEventListener('input', () => {
   localStorage.setItem('hrej_LF_LDG_SYNC', 'manual');
   document.getElementById('LF_LDG_SYNC').textContent = '✋ manuel';
   document.getElementById('LF_LDG_SYNC').className = 'sync-tag manual';
-  localStorage.setItem('hrej_M_LDG_SYNC', 'auto'); // recalcule M depuis LF
+  localStorage.setItem('hrej_M_LDG_SYNC', 'auto');
   calcAll();
 });
 document.getElementById('btn_resync_ldg').addEventListener('click', () => {
