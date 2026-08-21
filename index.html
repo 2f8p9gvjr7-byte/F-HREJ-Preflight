@@ -835,6 +835,13 @@ function calc5(){
   if(MARGE < 0){ cls = 'verdict-bad'; msg = '❌ N\'atteint pas l\'altitude programmée'; }
   else if(MARGE < MARGE_MIN * 0.5){ cls = 'verdict-bad'; msg = '❌ Marge insuffisante'; }
   else if(MARGE < MARGE_MIN){ cls = 'verdict-warn'; msg = `⚠️ Marge faible — objectif ${MARGE_MIN} ft`; }
+  // Repère CAA SS35 (1000 ft) toujours rappelé, même si l'utilisateur a personnalisé son propre seuil
+  let repereCAA = '';
+  if(MARGE_MIN !== 1000){
+    repereCAA = (MARGE >= 1000)
+      ? `<span style="font-size:11px;opacity:0.8;display:block;margin-top:4px">📏 Pour repère : ≥ 1000 ft (recommandation CAA SS35)</span>`
+      : `<span style="font-size:11px;opacity:0.8;display:block;margin-top:4px">📏 Pour repère : sous les 1000 ft recommandés (CAA SS35)</span>`;
+  }
   let html = '';
   html += `<div class="section-title">Calculs intermédiaires</div>`;
   html += `<div class="kvline"><span class="k">PA départ</span><span class="v">${PAdep.toFixed(0)} ft</span></div>`;
@@ -846,7 +853,7 @@ function calc5(){
   html += `<div class="kvline"><span class="k">Vz mi-parcours</span><span class="v">${VSmid.toFixed(0)} ft/min</span></div>`;
   html += `<div class="kvline"><span class="k">Vz col</span><span class="v">${VSCOL.toFixed(0)} ft/min</span></div>`;
   html += `<div class="kvline"><span class="k">Temps montée</span><span class="v">${tempsMin.toFixed(1)} min</span></div>`;
-  html += `<div class="verdict-box ${cls}">${msg}<span class="big">${MARGE.toFixed(0)} ft</span><span style="font-size:11px;opacity:0.8">Marge au col — altitude programmée ${ALTCOL_PROG} ft / col réel ${ALTCOL} ft / objectif ≥ ${MARGE_MIN} ft</span></div>`;
+  html += `<div class="verdict-box ${cls}">${msg}<span class="big">${MARGE.toFixed(0)} ft</span><span style="font-size:11px;opacity:0.8">Marge au col — altitude programmée ${ALTCOL_PROG} ft / col réel ${ALTCOL} ft / objectif ≥ ${MARGE_MIN} ft</span>${repereCAA}</div>`;
   document.getElementById('p5_out').innerHTML = html;
   LAST_C5 = { CAP, WDIR, WSPD, ALT0, ALTCOL, tempsMin, vzMoy, DIST, VIAS };
   return LAST_C5;
