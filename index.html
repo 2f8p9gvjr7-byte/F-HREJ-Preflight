@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<!-- BUILD: 2026-08-21-b — sync ALTCOL/OBS_ALTITUDE, fix falsy MARGE_MIN=0, repère CAA SS35 rappelé -->
+<!-- BUILD: 2026-08-22-a — retrait renvoi 4 (onglet 9·Zv), suppression terme redondant TAS onglet 6·Col, garde-fou masse 850-1050kg -->
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>DR400/160 F-HREJ — Prévol [build 2026-08-21-b]</title>
+<title>DR400/160 F-HREJ — Prévol [build 2026-08-22-a]</title>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -94,7 +94,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 <header>
   <div class="title">DR400/160 F-HREJ</div>
   <div class="sub">PRÉVOL · Formule HP-19 · Usage non certifié</div>
-  <div style="font-size:9px;color:var(--text-dim);opacity:0.5;margin-top:2px;letter-spacing:0.5px">build 2026-08-21-b</div>
+  <div style="font-size:9px;color:var(--text-dim);opacity:0.5;margin-top:2px;letter-spacing:0.5px">build 2026-08-22-a</div>
 </header>
 
 <div class="tabs">
@@ -390,7 +390,6 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
     2. Température ISA à cette PA : <b>T_ISA = 15 − 1,98 × (PA/1000)</b> °C<br>
     3. Conversion en Kelvin : <b>Tk = T + 273,15</b> (réelle et ISA)<br>
     4. Altitude vraie : <b>Zv = Zi × (Tk_réelle / Tk_ISA)</b><br>
-    Référence : niveau de la mer (QNH). Voir le tuto joint pour le détail pas à pas et la méthode manuelle alternative (approximation linéaire, calculette).<br>
     <b>Performance de montée :</b> réutilise le temps de montée et le Vz moyen (Simpson) calculés dans l'onglet 6·Col, sur la base de la distance/vitesse/vent/cap saisis là-bas.<br>
     <b>Usage non certifié — vérifier avec les abaques officiels</b>
   </div>
@@ -813,7 +812,7 @@ function calc5(){
   const OATmid = OAT + ((TLEV - OAT) * (PAmid - PAdep) / (denomLEV || 1));
   const ISAmid = 15 - 2 * (PAmid / 1000);
   const DAmid = PAmid + 120 * (OATmid - ISAmid);
-  const TAS = VIAS * (1 + 0.02 * (DAmid / 1000) + 0.01 * ((OATmid - ISAmid) / 5));
+  const TAS = VIAS * (1 + 0.02 * (DAmid / 1000));
   const WIND_REL = (WDIR + 180) - CAP;
   const rad = a => a * Math.PI / 180;
   const sinW = Math.sin(rad(WIND_REL));
@@ -845,6 +844,7 @@ function calc5(){
       : `<span style="font-size:11px;opacity:0.8;display:block;margin-top:4px">📏 Pour repère : sous les 1000 ft recommandés (CAA SS35)</span>`;
   }
   let html = '';
+  if(M < 850 || M > 1050) html += `<div class="banner-warn">⚠️ Masse hors plage de référence POH (850–1050 kg) — extrapolation, à considérer avec prudence.</div>`;
   html += `<div class="section-title">Calculs intermédiaires</div>`;
   html += `<div class="kvline"><span class="k">PA départ</span><span class="v">${PAdep.toFixed(0)} ft</span></div>`;
   html += `<div class="kvline"><span class="k">PA col</span><span class="v">${PAcol.toFixed(0)} ft</span></div>`;
